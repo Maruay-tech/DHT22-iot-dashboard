@@ -11,7 +11,7 @@
 
     function initDashboard() {
       drawChart();
-      setInterval(drawChart, 10000); // อัปเดตทุก 10 วินาที
+      setInterval(drawChart, 3000); // อัปเดตทุก 3 วินาที
     }
 
     function drawChart() {
@@ -161,7 +161,7 @@
 
 <body>
   <h1>📊 ESP8266 Temperature & Humidity Dashboard</h1>
-  <p class="description">ข้อมูลจาก Google Sheets (อัปเดตอัตโนมัติทุก 10 วินาที)</p>
+  <p class="description">ข้อมูลจาก Google Sheets (อัปเดตอัตโนมัติทุก 3 วินาที)</p>
 
   <div id="latestValues" role="region" aria-live="polite">
     <div>
