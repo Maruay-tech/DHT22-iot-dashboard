@@ -1,57 +1,113 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8" />
-<title>ESP8266 Dashboard with Google Visualization</title>
-<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-<script type="text/javascript">
-  google.charts.load('current', {'packages':['corechart']});
-  google.charts.setOnLoadCallback(drawChart);
+  <meta charset="UTF-8" />
+  <title>📊 ESP8266 Temperature & Humidity Dashboard</title>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script type="text/javascript">
+    google.charts.load('current', {'packages':['corechart']});
+    google.charts.setOnLoadCallback(drawChart);
 
-  function drawChart() {
-    var queryString = encodeURIComponent('SELECT A, B, C');
-    var query = new google.visualization.Query(
-      'https://docs.google.com/spreadsheets/d/1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM/gviz/tq?sheet=Sheet1&headers=1&tq=' + queryString
-    );
+    function drawChart() {
+      var queryString = encodeURIComponent('SELECT A, B, C');
+      var query = new google.visualization.Query(
+        'https://docs.google.com/spreadsheets/d/1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM/gviz/tq?sheet=Sheet1&headers=1&tq=' + queryString
+      );
 
-    query.send(function(response) {
-      if (response.isError()) {
-        alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
-        return;
-      }
-
-      var data = response.getDataTable();
-
-      var options = {
-        title: 'ESP8266 Temperature & Humidity',
-        curveType: 'function',
-        legend: { position: 'bottom' },
-        hAxis: { title: 'Timestamp' },
-        vAxes: {
-          0: { title: 'Temperature (°C)' },
-          1: { title: 'Humidity (%)' }
-        },
-        series: {
-          0: { targetAxisIndex: 0, color: 'red' },
-          1: { targetAxisIndex: 1, color: 'blue' }
+      query.send(function(response) {
+        if (response.isError()) {
+          alert('เกิดข้อผิดพลาด: ' + response.getMessage() + '\n' + response.getDetailedMessage());
+          return;
         }
-      };
 
-      var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-      chart.draw(data, options);
-    });
-  }
-</script>
-<style>
-  body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
-  #chart_div { width: 800px; height: 400px; }
-</style>
+        var data = response.getDataTable();
+
+        // ดึงค่าล่าสุด (แถวสุดท้าย) มาแสดงตัวเลข
+        var lastRow = data.getNumberOfRows() - 1;
+        var latestTemp = data.getValue(lastRow, 1); // คอลัมน์ B = Temperature
+        var latestHum = data.getValue(lastRow, 2);  // คอลัมน์ C = Humidity
+        document.getElementById('latestTemp').textContent = latestTemp.toFixed(2) + ' °C';
+        document.getElementById('latestHum').textContent = latestHum.toFixed(2) + ' %';
+
+        var options = {
+          title: 'ESP8266 Temperature & Humidity',
+          curveType: 'function',
+          legend: { position: 'bottom' },
+          hAxis: {
+            title: 'Timestamp',
+            slantedText: true,
+            slantedTextAngle: 45
+          },
+          vAxes: {
+            0: { title: 'Temperature (°C)' },
+            1: { title: 'Humidity (%)' }
+          },
+          series: {
+            0: { targetAxisIndex: 0, color: 'red' },
+            1: { targetAxisIndex: 1, color: 'blue' }
+          },
+          height: 400,
+          backgroundColor: '#f9f9f9',
+          chartArea: { left: 80, top: 50, width: '75%', height: '70%' },
+          animation: {
+            startup: true,
+            duration: 1000,
+            easing: 'out'
+          }
+        };
+
+        var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+        chart.draw(data, options);
+      });
+    }
+  </script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #eaeaea;
+      margin: 0;
+      padding: 30px;
+      color: #333;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 5px;
+    }
+    p {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+      color: #555;
+    }
+    #latestValues {
+      font-size: 1.4em;
+      margin-bottom: 25px;
+    }
+    #latestValues span {
+      margin: 0 15px;
+      font-weight: bold;
+      color: #222;
+    }
+    #chart_div {
+      margin: auto;
+      width: 90%;
+      max-width: 900px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+    }
+  </style>
 </head>
 <body>
-
   <h1>📊 ESP8266 Temperature & Humidity Dashboard</h1>
   <p>ข้อมูลจาก Google Sheets (อัปเดตทุกครั้งที่ ESP ส่ง)</p>
-  <div id="chart_div"></div>
 
+  <div id="latestValues">
+    อุณหภูมิปัจจุบัน: <span id="latestTemp">กำลังโหลด...</span> |
+    ความชื้นปัจจุบัน: <span id="latestHum">กำลังโหลด...</span>
+  </div>
+
+  <div id="chart_div"></div>
 </body>
 </html>
