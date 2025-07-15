@@ -2,16 +2,16 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>🌡️ ESP8266 Temp & Humidity Dashboard (Modern)</title>
+  <title>🌡️ ESP8266 Temperature & Humidity Dashboard (Modern)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://www.gstatic.com/charts/loader.js"></script>
   <script>
     google.charts.load('current', {'packages':['corechart']});
-    google.charts.setOnLoadCallback(initialize);
+    google.charts.setOnLoadCallback(initDashboard);
 
-    function initialize() {
+    function initDashboard() {
       drawChart();
-      setInterval(drawChart, 30000); // รีเฟรชข้อมูลทุก 30 วิ
+      setInterval(drawChart, 30000); // รีเฟรชข้อมูลทุก 30 วินาที
     }
 
     function drawChart() {
@@ -27,10 +27,12 @@
         }
         const data = response.getDataTable();
 
+        // ดึงข้อมูลล่าสุด
         let lastRow = data.getNumberOfRows() - 1;
         let latestTemp = data.getValue(lastRow, 1);
         let latestHum = data.getValue(lastRow, 2);
 
+        // ถ้าข้อมูลว่าง ไล่หาแถวก่อนหน้า
         if (isNaN(latestTemp) || isNaN(latestHum)) {
           for (let i = lastRow - 1; i >= 0; i--) {
             latestTemp = data.getValue(i, 1);
@@ -43,30 +45,30 @@
         document.getElementById('latestHum').textContent = latestHum.toFixed(2) + ' %';
 
         const options = {
-          backgroundColor: 'transparent',
-          chartArea: {left: 60, top: 50, width: '80%', height: '70%'},
-          legend: {position: 'bottom', textStyle: {fontSize: 14}},
+          backgroundColor: '#fff',
+          chartArea: { left: 70, top: 60, width: '80%', height: '70%' },
+          legend: { position: 'bottom', textStyle: { fontSize: 14 } },
           hAxis: {
             title: 'เวลา (Timestamp)',
-            textStyle: {fontSize: 12, color: '#666'},
+            textStyle: { fontSize: 12, color: '#666' },
             slantedText: true,
-            slantedTextAngle: 45
+            slantedTextAngle: 45,
           },
           vAxes: {
-            0: {title: 'อุณหภูมิ (°C)', textStyle: {fontSize: 12, color: '#e53935'}},
-            1: {title: 'ความชื้น (%)', textStyle: {fontSize: 12, color: '#1e88e5'}}
+            0: { title: 'อุณหภูมิ (°C)', textStyle: { fontSize: 12, color: '#e53935' } },
+            1: { title: 'ความชื้น (%)', textStyle: { fontSize: 12, color: '#1e88e5' } },
           },
           series: {
-            0: {targetAxisIndex: 0, color: '#e53935', lineWidth: 3, pointSize: 5},
-            1: {targetAxisIndex: 1, color: '#1e88e5', lineWidth: 3, pointSize: 5}
+            0: { targetAxisIndex: 0, color: '#e53935', lineWidth: 3, pointSize: 5 },
+            1: { targetAxisIndex: 1, color: '#1e88e5', lineWidth: 3, pointSize: 5 },
           },
           animation: {
             startup: true,
             duration: 800,
-            easing: 'easeInOut'
+            easing: 'easeInOut',
           },
-          height: 420,
-          fontName: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+          height: 450,
+          fontName: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
         };
 
         const chart = new google.visualization.LineChart(document.getElementById('chart_div'));
@@ -74,89 +76,95 @@
       });
     }
   </script>
+
   <style>
-    /* Reset & base */
+    /* Reset and base styles */
     * {
       box-sizing: border-box;
     }
     body {
       margin: 0;
-      padding: 30px 20px;
-      background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+      padding: 40px 20px;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: #333;
-      text-align: center;
-      min-height: 100vh;
+      background: linear-gradient(135deg, #e0eafc, #cfdef3);
+      color: #222;
       display: flex;
       flex-direction: column;
       align-items: center;
+      min-height: 100vh;
     }
     h1 {
+      margin-bottom: 8px;
       font-weight: 700;
-      margin: 0 0 8px 0;
-      color: #222;
-      font-size: 2.2rem;
+      font-size: 2.4rem;
       user-select: none;
+      color: #2c3e50;
     }
     p.description {
-      margin: 0 0 25px 0;
-      color: #555;
-      font-size: 1.1rem;
+      margin-top: 0;
+      margin-bottom: 32px;
+      font-size: 1.2rem;
       font-weight: 500;
+      color: #34495e;
       user-select: none;
     }
     #latestValues {
       display: flex;
       justify-content: center;
-      gap: 40px;
-      background: #ffffffcc;
-      border-radius: 12px;
-      padding: 18px 40px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-      margin-bottom: 30px;
-      font-size: 1.5rem;
+      gap: 50px;
+      background: #fff;
+      padding: 24px 50px;
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+      font-size: 1.6rem;
       font-weight: 600;
-      color: #444;
-      user-select: none;
-      max-width: 600px;
+      color: #555;
+      margin-bottom: 40px;
       width: 100%;
-      box-sizing: border-box;
+      max-width: 700px;
+      user-select: none;
+    }
+    #latestValues div {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     #latestValues span.value {
-      color: #007acc;
+      margin-top: 8px;
+      font-size: 2rem;
       font-weight: 700;
-      font-size: 1.7rem;
+      color: #2c3e50;
       transition: color 0.3s ease;
     }
-    #latestValues span.value.temp {
-      color: #e53935;
+    #latestValues span.temp {
+      color: #e74c3c;
     }
-    #latestValues span.value.hum {
-      color: #1e88e5;
+    #latestValues span.hum {
+      color: #3498db;
     }
     #chart_div {
       width: 90%;
       max-width: 900px;
-      height: 450px;
-      background: white;
-      border-radius: 16px;
-      padding: 25px;
-      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      background: #fff;
+      border-radius: 18px;
+      padding: 30px 40px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
       user-select: none;
+      min-height: 470px;
     }
 
     /* Responsive */
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
       #latestValues {
         flex-direction: column;
-        gap: 15px;
-        font-size: 1.3rem;
-        padding: 15px 20px;
+        gap: 20px;
+        padding: 20px 30px;
+        font-size: 1.4rem;
       }
       #chart_div {
         width: 100%;
-        height: 350px;
-        padding: 15px;
+        min-height: 380px;
+        padding: 20px 25px;
       }
     }
   </style>
@@ -165,9 +173,15 @@
   <h1>🌡️ ESP8266 Temperature & Humidity Dashboard</h1>
   <p class="description">ข้อมูลจาก Google Sheets อัปเดตอัตโนมัติทุก 30 วินาที</p>
 
-  <div id="latestValues" aria-live="polite" role="region" aria-label="ข้อมูลอุณหภูมิและความชื้นล่าสุด">
-    <div>อุณหภูมิ: <span id="latestTemp" class="value temp">กำลังโหลด...</span></div>
-    <div>ความชื้น: <span id="latestHum" class="value hum">กำลังโหลด...</span></div>
+  <div id="latestValues" role="region" aria-live="polite" aria-label="ข้อมูลอุณหภูมิและความชื้นล่าสุด">
+    <div>
+      <div>อุณหภูมิ</div>
+      <span id="latestTemp" class="value temp">กำลังโหลด...</span>
+    </div>
+    <div>
+      <div>ความชื้น</div>
+      <span id="latestHum" class="value hum">กำลังโหลด...</span>
+    </div>
   </div>
 
   <div id="chart_div" role="img" aria-label="กราฟแสดงอุณหภูมิและความชื้นย้อนหลัง"></div>
