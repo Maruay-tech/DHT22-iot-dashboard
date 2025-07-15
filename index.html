@@ -12,18 +12,9 @@
       padding: 30px;
       color: #333;
     }
-    h1 {
-      font-size: 24px;
-      margin-bottom: 5px;
-    }
-    p {
-      font-size: 16px;
-      margin-bottom: 20px;
-    }
-    canvas {
-      max-width: 800px;
-      margin-bottom: 40px;
-    }
+    h1 { font-size: 24px; }
+    p { font-size: 16px; }
+    canvas { max-width: 800px; margin-top: 20px; }
   </style>
 </head>
 <body>
@@ -35,18 +26,27 @@
   <canvas id="humChart"></canvas>
 
   <script>
-    const spreadsheetID = "1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM"; // เปลี่ยน ID ตาม Google Sheets ของคุณ
+    const spreadsheetID = "1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM";
 
     function drawChart(data) {
+      console.log("📥 Data from Google Sheets:", data);  // <== ดูผลลัพธ์ใน console
+
       const labels = [];
       const temps = [];
       const hums = [];
 
       data.forEach(row => {
-        labels.push(new Date(row.Timestamp).toLocaleTimeString());
-        temps.push(parseFloat(row.Temperature));
-        hums.push(parseFloat(row.Humidity));
+        if (row.Timestamp && row.Temperature && row.Humidity) {
+          labels.push(new Date(row.Timestamp).toLocaleTimeString());
+          temps.push(parseFloat(row.Temperature));
+          hums.push(parseFloat(row.Humidity));
+        }
       });
+
+      if (labels.length === 0) {
+        alert("⚠️ ไม่พบข้อมูลใน Google Sheets!\nตรวจสอบว่าเปิดแชร์และมีข้อมูลใน Sheet1 หรือไม่");
+        return;
+      }
 
       new Chart(document.getElementById("tempChart"), {
         type: 'line',
@@ -55,23 +55,12 @@
           datasets: [{
             label: 'อุณหภูมิ (°C)',
             data: temps,
-            borderColor: 'rgb(255, 99, 132)',
-            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'red',
+            backgroundColor: 'rgba(255,99,132,0.2)',
             borderWidth: 2,
-            fill: true,
-            tension: 0.3
+            tension: 0.4,
+            fill: true
           }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: {
-              title: {
-                display: true,
-                text: '°C'
-              }
-            }
-          }
         }
       });
 
@@ -82,23 +71,12 @@
           datasets: [{
             label: 'ความชื้น (%)',
             data: hums,
-            borderColor: 'rgb(54, 162, 235)',
-            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            borderColor: 'blue',
+            backgroundColor: 'rgba(54,162,235,0.2)',
             borderWidth: 2,
-            fill: true,
-            tension: 0.3
+            tension: 0.4,
+            fill: true
           }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: {
-              title: {
-                display: true,
-                text: '%'
-              }
-            }
-          }
         }
       });
     }
