@@ -1,142 +1,122 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🌡️ Realtime Temperature & 💧 Humidity (Last 3 Months)</title>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 1rem;
-      margin: 0;
-      background: #f8f9fa;
-    }
-    h2 {
-      text-align: center;
-    }
-    canvas {
-      max-width: 100%;
-      height: auto;
-    }
-    #chart-container {
-      width: 100%;
-      max-width: 1000px;
-      margin: auto;
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: auto; padding: 1rem; background: #f0f4f8; color: #222; }
+    h1 { text-align: center; margin-bottom: 0.5rem; font-weight: 700; }
+    #charts { display: flex; flex-wrap: wrap; justify-content: space-around; gap: 2rem; }
+    canvas { background: white; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); max-width: 100%; }
+    .chart-container { width: 100%; max-width: 430px; }
+    .latest-values { text-align: center; margin-top: 1rem; font-size: 1.1rem; font-weight: 600; color: #555; }
+    @media (max-width: 600px) {
+      #charts { flex-direction: column; align-items: center; }
+      .chart-container { max-width: 100%; }
     }
   </style>
 </head>
 <body>
-  <h2>🌡️ Realtime Temperature & 💧 Humidity (Last 3 Months)</h2>
-  <div id="chart-container">
-    <canvas id="sensorChart"></canvas>
+  <h1>🌡️ Realtime Temperature & 💧 Humidity (Last 3 Months)</h1>
+
+  <div id="charts">
+    <div class="chart-container">
+      <canvas id="tempChart"></canvas>
+      <div id="latestTemp" class="latest-values">🌡️ กำลังโหลดข้อมูลอุณหภูมิ...</div>
+    </div>
+    <div class="chart-container">
+      <canvas id="humChart"></canvas>
+      <div id="latestHum" class="latest-values">💧 กำลังโหลดข้อมูลความชื้น...</div>
+    </div>
   </div>
 
   <script>
-    FileInputStream serviceAccount =
-new FileInputStream("path/to/serviceAccountKey.json");
-
-FirebaseOptions options = new FirebaseOptions.Builder()
-  .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-  .setDatabaseUrl("https://esp8266-8198b-default-rtdb.asia-southeast1.firebasedatabase.app")
-  .build();
-
-FirebaseApp.initializeApp(options);
+    const firebaseConfig = {
+      databaseURL: "https://esp8266-8198b-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    };
 
     firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
 
-    const dbRef = firebase.database().ref("/sensorLogs"); // ใช้ path ตาม Firebase ของคุณ
+    const ctxTemp = document.getElementById("tempChart").getContext("2d");
+    const ctxHum = document.getElementById("humChart").getContext("2d");
 
-    const chartCtx = document.getElementById('sensorChart').getContext('2d');
-    const chart = new Chart(chartCtx, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [
-          {
-            label: 'Temperature (°C)',
-            borderColor: 'red',
-            backgroundColor: 'rgba(255,0,0,0.1)',
-            data: [],
-            yAxisID: 'y',
-          },
-          {
-            label: 'Humidity (%)',
-            borderColor: 'blue',
-            backgroundColor: 'rgba(0,0,255,0.1)',
-            data: [],
-            yAxisID: 'y1',
-          }
-        ]
-      },
+    const tempChart = new Chart(ctxTemp, {
+      type: "line",
+      data: { labels: [], datasets: [{ label: "Temperature (°C)", data: [], borderColor: "#e25822", backgroundColor: "rgba(226, 88, 34, 0.3)", fill: true, tension: 0.3, pointRadius: 0 }] },
       options: {
         responsive: true,
-        interaction: {
-          mode: 'index',
-          intersect: false
-        },
-        stacked: false,
         scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Time'
-            }
-          },
-          y: {
-            type: 'linear',
-            position: 'left',
-            title: {
-              display: true,
-              text: 'Temperature (°C)'
-            }
-          },
-          y1: {
-            type: 'linear',
-            position: 'right',
-            title: {
-              display: true,
-              text: 'Humidity (%)'
-            },
-            grid: {
-              drawOnChartArea: false
-            }
-          }
-        }
+          x: { type: "time", time: { unit: "day", tooltipFormat: "DD MMM YYYY HH:mm" }, title: { display: true, text: "เวลา" } },
+          y: { title: { display: true, text: "°C" }, suggestedMin: 10, suggestedMax: 50 }
+        },
+        plugins: { legend: { display: true }, tooltip: { mode: "index", intersect: false } }
       }
     });
 
-    function updateChart(snapshot) {
-      const data = snapshot.val();
-      const now = Date.now();
-      const threeMonthsAgo = now - (90 * 24 * 60 * 60 * 1000);
-
-      const timestamps = [];
-      const temps = [];
-      const hums = [];
-
-      for (let key in data) {
-        const entry = data[key];
-        if (!entry.timestamp || entry.timestamp < threeMonthsAgo) continue;
-        const timeLabel = new Date(entry.timestamp).toLocaleString();
-        timestamps.push(timeLabel);
-        temps.push(entry.temperature);
-        hums.push(entry.humidity);
+    const humChart = new Chart(ctxHum, {
+      type: "line",
+      data: { labels: [], datasets: [{ label: "Humidity (%)", data: [], borderColor: "#1f77b4", backgroundColor: "rgba(31, 119, 180, 0.3)", fill: true, tension: 0.3, pointRadius: 0 }] },
+      options: {
+        responsive: true,
+        scales: {
+          x: { type: "time", time: { unit: "day", tooltipFormat: "DD MMM YYYY HH:mm" }, title: { display: true, text: "เวลา" } },
+          y: { title: { display: true, text: "%" }, suggestedMin: 10, suggestedMax: 100 }
+        },
+        plugins: { legend: { display: true }, tooltip: { mode: "index", intersect: false } }
       }
+    });
 
-      chart.data.labels = timestamps;
-      chart.data.datasets[0].data = temps;
-      chart.data.datasets[1].data = hums;
-      chart.update();
+    function tsToDate(ts) { return new Date(ts * 1000); }
+
+    const threeMonthsAgo = Math.floor(Date.now() / 1000) - 90 * 24 * 60 * 60;
+
+    function fetchData() {
+      database.ref("logs").orderByKey().startAt(threeMonthsAgo.toString()).once("value", snapshot => {
+        const data = snapshot.val();
+        if (!data) {
+          document.getElementById("latestTemp").textContent = "❌ ไม่มีข้อมูลอุณหภูมิ";
+          document.getElementById("latestHum").textContent = "❌ ไม่มีข้อมูลความชื้น";
+          return;
+        }
+        const tempLabels = [];
+        const tempData = [];
+        const humLabels = [];
+        const humData = [];
+
+        const entries = Object.entries(data).sort((a, b) => Number(a[0]) - Number(b[0]));
+
+        entries.forEach(([ts, values]) => {
+          const date = tsToDate(ts);
+          tempLabels.push(date);
+          tempData.push(values.temperature);
+          humLabels.push(date);
+          humData.push(values.humidity);
+        });
+
+        tempChart.data.labels = tempLabels;
+        tempChart.data.datasets[0].data = tempData;
+        tempChart.update();
+
+        humChart.data.labels = humLabels;
+        humChart.data.datasets[0].data = humData;
+        humChart.update();
+
+        const lastEntry = entries[entries.length - 1][1];
+        document.getElementById("latestTemp").textContent = `🌡️ อุณหภูมิ ล่าสุด: ${lastEntry.temperature.toFixed(2)} °C`;
+        document.getElementById("latestHum").textContent = `💧 ความชื้น ล่าสุด: ${lastEntry.humidity.toFixed(2)} %`;
+      });
     }
 
-    // โหลดข้อมูลครั้งแรก
-    dbRef.once('value', updateChart);
-
-    // ติดตามแบบ realtime (optional)
-    dbRef.on('value', updateChart);
+    fetchData();
+    setInterval(fetchData, 60000);
   </script>
 </body>
 </html>
