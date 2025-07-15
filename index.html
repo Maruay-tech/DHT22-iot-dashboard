@@ -1,29 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🌡️ Realtime Temperature & 💧 Humidity</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <style>
     body {
-      font-family: sans-serif;
-      text-align: center;
+      font-family: Arial, sans-serif;
       background: #f0f8ff;
+      margin: 0;
+      padding: 1rem;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    #chart-container {
+      max-width: 900px;
+      margin: auto;
+      padding: 0 10px;
     }
     canvas {
-      max-width: 800px;
-      margin-top: 20px;
+      width: 100% !important;
+      height: auto !important;
+      max-height: 400px;
+    }
+    /* Responsive font sizes */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 1.2rem;
+      }
     }
   </style>
 </head>
 <body>
   <h1>🌡️ Realtime Temperature & 💧 Humidity</h1>
-  <canvas id="chart" height="100"></canvas>
+  <div id="chart-container">
+    <canvas id="chart"></canvas>
+  </div>
 
   <script>
-    // ✅ Replace this with your Firebase config
     const firebaseConfig = {
       databaseURL: "https://esp8266-8198b-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
@@ -31,36 +51,67 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const ctx = document.getElementById('chart').getContext('2d');
+    const ctx = document.getElementById("chart").getContext("2d");
     const chart = new Chart(ctx, {
-      type: 'line',
+      type: "line",
       data: {
         labels: [],
         datasets: [
           {
-            label: '🌡️ Temperature (°C)',
-            borderColor: 'red',
+            label: "🌡️ Temperature (°C)",
+            borderColor: "red",
             data: [],
-            fill: false
+            fill: false,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 6,
           },
           {
-            label: '💧 Humidity (%)',
-            borderColor: 'blue',
+            label: "💧 Humidity (%)",
+            borderColor: "blue",
             data: [],
-            fill: false
-          }
-        ]
+            fill: false,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+          },
+        ],
       },
       options: {
         animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
         scales: {
-          x: { display: true, title: { display: true, text: 'Time' } },
-          y: { beginAtZero: true }
-        }
-      }
+          x: {
+            display: true,
+            title: {
+              display: true,
+              text: "Time",
+            },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 5,
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            labels: {
+              font: {
+                size: 14,
+              },
+            },
+          },
+          tooltip: {
+            enabled: true,
+          },
+        },
+      },
     });
 
-    function updateChart(temp, humid) {
+    function updateChart(temp, hum) {
       const now = new Date().toLocaleTimeString();
       if (chart.data.labels.length > 20) {
         chart.data.labels.shift();
@@ -69,12 +120,12 @@
       }
       chart.data.labels.push(now);
       chart.data.datasets[0].data.push(temp);
-      chart.data.datasets[1].data.push(humid);
+      chart.data.datasets[1].data.push(hum);
       chart.update();
     }
 
     function fetchData() {
-      db.ref("sensor").on("value", snapshot => {
+      db.ref("sensor").on("value", (snapshot) => {
         const data = snapshot.val();
         if (data) {
           const temp = data.temperature || 0;
