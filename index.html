@@ -1,4 +1,3 @@
-<!-- เริ่มต้นโค้ด HTML สำหรับ Dashboard พร้อมฟีเจอร์ที่ร้องขอ -->
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -10,10 +9,13 @@
   <script>
     google.charts.load('current', { packages: ['corechart'] });
     let globalData;
+    let scrollIndex = 0;
+    const windowSize = 20; // จำนวนข้อมูลที่แสดงพร้อมกัน
 
     function initDashboard() {
       drawChart();
       setInterval(drawChart, 10000);
+      setInterval(() => drawChart(undefined, true), 3000); // อัปเดตกราฟเลื่อนทุก 3 วินาที
     }
 
     google.charts.setOnLoadCallback(initDashboard);
@@ -54,7 +56,7 @@
       saveAs(blob, 'temperature_humidity_data.csv');
     }
 
-    function drawChart(range = 1) {
+    function drawChart(range = 1, scroll = false) {
       const query = new google.visualization.Query(
         'https://docs.google.com/spreadsheets/d/1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM/gviz/tq?sheet=Sheet1&headers=1'
       );
@@ -69,6 +71,23 @@
 
         document.getElementById("latestTemp").textContent = `${temp.toFixed(2)} °C`;
         document.getElementById("latestHum").textContent = `${hum.toFixed(2)} %`;
+
+        let scrollData = new google.visualization.DataTable();
+        scrollData.addColumn('datetime', 'Time');
+        scrollData.addColumn('number', 'Temperature');
+        scrollData.addColumn('number', 'Humidity');
+
+        const totalRows = filtered.getNumberOfRows();
+        if (scroll) scrollIndex++;
+        if (scrollIndex > totalRows - windowSize) scrollIndex = 0;
+
+        for (let i = scrollIndex; i < scrollIndex + windowSize && i < totalRows; i++) {
+          scrollData.addRow([
+            filtered.getValue(i, 0),
+            filtered.getValue(i, 1),
+            filtered.getValue(i, 2)
+          ]);
+        }
 
         const options = {
           backgroundColor: 'transparent',
@@ -88,10 +107,10 @@
             1: { targetAxisIndex: 1, color: '#40c4ff', lineWidth: 2 }
           },
           height: 400,
-          animation: { startup: true, duration: 800, easing: 'out' },
+          animation: { startup: true, duration: 500, easing: 'out' },
         };
 
-        new google.visualization.LineChart(document.getElementById('chart_div')).draw(filtered, options);
+        new google.visualization.LineChart(document.getElementById('chart_div')).draw(scrollData, options);
       });
     }
   </script>
