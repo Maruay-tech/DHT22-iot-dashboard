@@ -2,128 +2,174 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>📊 ESP8266 Temperature & Humidity Dashboard (Realtime)</title>
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <script type="text/javascript">
+  <title>🌡️ ESP8266 Temp & Humidity Dashboard (Modern)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
+  <script>
     google.charts.load('current', {'packages':['corechart']});
     google.charts.setOnLoadCallback(initialize);
 
     function initialize() {
       drawChart();
-      // ตั้งเวลาให้รีเฟรชกราฟทุก 30,000 ms (30 วินาที)
-      setInterval(drawChart, 30000);
+      setInterval(drawChart, 30000); // รีเฟรชข้อมูลทุก 30 วิ
     }
 
     function drawChart() {
-      var queryString = encodeURIComponent('SELECT A, B, C');
-      var query = new google.visualization.Query(
+      const queryString = encodeURIComponent('SELECT A, B, C');
+      const query = new google.visualization.Query(
         'https://docs.google.com/spreadsheets/d/1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM/gviz/tq?sheet=Sheet1&headers=1&tq=' + queryString
       );
 
-      query.send(function(response) {
+      query.send(response => {
         if (response.isError()) {
           alert('เกิดข้อผิดพลาด: ' + response.getMessage() + '\n' + response.getDetailedMessage());
           return;
         }
+        const data = response.getDataTable();
 
-        var data = response.getDataTable();
-
-        var lastRow = data.getNumberOfRows() - 1;
-        var latestTemp = data.getValue(lastRow, 1);
-        var latestHum = data.getValue(lastRow, 2);
+        let lastRow = data.getNumberOfRows() - 1;
+        let latestTemp = data.getValue(lastRow, 1);
+        let latestHum = data.getValue(lastRow, 2);
 
         if (isNaN(latestTemp) || isNaN(latestHum)) {
-          for (var i = lastRow - 1; i >= 0; i--) {
+          for (let i = lastRow - 1; i >= 0; i--) {
             latestTemp = data.getValue(i, 1);
             latestHum = data.getValue(i, 2);
-            if (!isNaN(latestTemp) && !isNaN(latestHum)) {
-              break;
-            }
+            if (!isNaN(latestTemp) && !isNaN(latestHum)) break;
           }
         }
 
         document.getElementById('latestTemp').textContent = latestTemp.toFixed(2) + ' °C';
         document.getElementById('latestHum').textContent = latestHum.toFixed(2) + ' %';
 
-        var options = {
-          title: 'ESP8266 Temperature & Humidity',
-          curveType: 'function',
-          legend: { position: 'bottom' },
+        const options = {
+          backgroundColor: 'transparent',
+          chartArea: {left: 60, top: 50, width: '80%', height: '70%'},
+          legend: {position: 'bottom', textStyle: {fontSize: 14}},
           hAxis: {
-            title: 'Timestamp',
+            title: 'เวลา (Timestamp)',
+            textStyle: {fontSize: 12, color: '#666'},
             slantedText: true,
             slantedTextAngle: 45
           },
           vAxes: {
-            0: { title: 'Temperature (°C)' },
-            1: { title: 'Humidity (%)' }
+            0: {title: 'อุณหภูมิ (°C)', textStyle: {fontSize: 12, color: '#e53935'}},
+            1: {title: 'ความชื้น (%)', textStyle: {fontSize: 12, color: '#1e88e5'}}
           },
           series: {
-            0: { targetAxisIndex: 0, color: 'red' },
-            1: { targetAxisIndex: 1, color: 'blue' }
+            0: {targetAxisIndex: 0, color: '#e53935', lineWidth: 3, pointSize: 5},
+            1: {targetAxisIndex: 1, color: '#1e88e5', lineWidth: 3, pointSize: 5}
           },
-          height: 400,
-          backgroundColor: '#f9f9f9',
-          chartArea: { left: 80, top: 50, width: '75%', height: '70%' },
           animation: {
             startup: true,
-            duration: 1000,
-            easing: 'out'
-          }
+            duration: 800,
+            easing: 'easeInOut'
+          },
+          height: 420,
+          fontName: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
         };
 
-        var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+        const chart = new google.visualization.LineChart(document.getElementById('chart_div'));
         chart.draw(data, options);
       });
     }
   </script>
   <style>
+    /* Reset & base */
+    * {
+      box-sizing: border-box;
+    }
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #eaeaea;
       margin: 0;
-      padding: 30px;
+      padding: 30px 20px;
+      background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: #333;
       text-align: center;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     h1 {
-      margin-bottom: 5px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      color: #222;
+      font-size: 2.2rem;
+      user-select: none;
     }
-    p {
-      margin-top: 0;
-      margin-bottom: 10px;
-      font-size: 1.1em;
+    p.description {
+      margin: 0 0 25px 0;
       color: #555;
+      font-size: 1.1rem;
+      font-weight: 500;
+      user-select: none;
     }
     #latestValues {
-      font-size: 1.4em;
-      margin-bottom: 25px;
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      background: #ffffffcc;
+      border-radius: 12px;
+      padding: 18px 40px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      margin-bottom: 30px;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #444;
+      user-select: none;
+      max-width: 600px;
+      width: 100%;
+      box-sizing: border-box;
     }
-    #latestValues span {
-      margin: 0 15px;
-      font-weight: bold;
-      color: #222;
+    #latestValues span.value {
+      color: #007acc;
+      font-weight: 700;
+      font-size: 1.7rem;
+      transition: color 0.3s ease;
+    }
+    #latestValues span.value.temp {
+      color: #e53935;
+    }
+    #latestValues span.value.hum {
+      color: #1e88e5;
     }
     #chart_div {
-      margin: auto;
       width: 90%;
       max-width: 900px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      height: 450px;
       background: white;
-      padding: 20px;
-      border-radius: 8px;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      user-select: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      #latestValues {
+        flex-direction: column;
+        gap: 15px;
+        font-size: 1.3rem;
+        padding: 15px 20px;
+      }
+      #chart_div {
+        width: 100%;
+        height: 350px;
+        padding: 15px;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>📊 ESP8266 Temperature & Humidity Dashboard (Realtime)</h1>
-  <p>ข้อมูลจาก Google Sheets (อัปเดตทุกครั้งที่ ESP ส่ง)</p>
+  <h1>🌡️ ESP8266 Temperature & Humidity Dashboard</h1>
+  <p class="description">ข้อมูลจาก Google Sheets อัปเดตอัตโนมัติทุก 30 วินาที</p>
 
-  <div id="latestValues">
-    อุณหภูมิปัจจุบัน: <span id="latestTemp">กำลังโหลด...</span> |
-    ความชื้นปัจจุบัน: <span id="latestHum">กำลังโหลด...</span>
+  <div id="latestValues" aria-live="polite" role="region" aria-label="ข้อมูลอุณหภูมิและความชื้นล่าสุด">
+    <div>อุณหภูมิ: <span id="latestTemp" class="value temp">กำลังโหลด...</span></div>
+    <div>ความชื้น: <span id="latestHum" class="value hum">กำลังโหลด...</span></div>
   </div>
 
-  <div id="chart_div"></div>
+  <div id="chart_div" role="img" aria-label="กราฟแสดงอุณหภูมิและความชื้นย้อนหลัง"></div>
 </body>
 </html>
