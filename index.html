@@ -1,94 +1,57 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>ESP8266 Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.min.js"></script>
-  <style>
-    body {
-      font-family: "Segoe UI", sans-serif;
-      background-color: #f8f9fa;
-      padding: 30px;
-      color: #333;
-    }
-    h1 { font-size: 24px; }
-    p { font-size: 16px; }
-    canvas { max-width: 800px; margin-top: 20px; }
-  </style>
+<meta charset="UTF-8" />
+<title>ESP8266 Dashboard with Google Visualization</title>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script type="text/javascript">
+  google.charts.load('current', {'packages':['corechart']});
+  google.charts.setOnLoadCallback(drawChart);
+
+  function drawChart() {
+    var queryString = encodeURIComponent('SELECT A, B, C');
+    var query = new google.visualization.Query(
+      'https://docs.google.com/spreadsheets/d/1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM/gviz/tq?sheet=Sheet1&headers=1&tq=' + queryString
+    );
+
+    query.send(function(response) {
+      if (response.isError()) {
+        alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+        return;
+      }
+
+      var data = response.getDataTable();
+
+      var options = {
+        title: 'ESP8266 Temperature & Humidity',
+        curveType: 'function',
+        legend: { position: 'bottom' },
+        hAxis: { title: 'Timestamp' },
+        vAxes: {
+          0: { title: 'Temperature (°C)' },
+          1: { title: 'Humidity (%)' }
+        },
+        series: {
+          0: { targetAxisIndex: 0, color: 'red' },
+          1: { targetAxisIndex: 1, color: 'blue' }
+        }
+      };
+
+      var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+      chart.draw(data, options);
+    });
+  }
+</script>
+<style>
+  body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+  #chart_div { width: 800px; height: 400px; }
+</style>
 </head>
 <body>
 
   <h1>📊 ESP8266 Temperature & Humidity Dashboard</h1>
   <p>ข้อมูลจาก Google Sheets (อัปเดตทุกครั้งที่ ESP ส่ง)</p>
-
-  <canvas id="tempChart"></canvas>
-  <canvas id="humChart"></canvas>
-
-  <script>
-    const spreadsheetID = "1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM";
-
-    function drawChart(data) {
-      console.log("📥 Data from Google Sheets:", data);  // <== ดูผลลัพธ์ใน console
-
-      const labels = [];
-      const temps = [];
-      const hums = [];
-
-      data.forEach(row => {
-        if (row.Timestamp && row.Temperature && row.Humidity) {
-          labels.push(new Date(row.Timestamp).toLocaleTimeString());
-          temps.push(parseFloat(row.Temperature));
-          hums.push(parseFloat(row.Humidity));
-        }
-      });
-
-      if (labels.length === 0) {
-        alert("⚠️ ไม่พบข้อมูลใน Google Sheets!\nตรวจสอบว่าเปิดแชร์และมีข้อมูลใน Sheet1 หรือไม่");
-        return;
-      }
-
-      new Chart(document.getElementById("tempChart"), {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'อุณหภูมิ (°C)',
-            data: temps,
-            borderColor: 'red',
-            backgroundColor: 'rgba(255,99,132,0.2)',
-            borderWidth: 2,
-            tension: 0.4,
-            fill: true
-          }]
-        }
-      });
-
-      new Chart(document.getElementById("humChart"), {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'ความชื้น (%)',
-            data: hums,
-            borderColor: 'blue',
-            backgroundColor: 'rgba(54,162,235,0.2)',
-            borderWidth: 2,
-            tension: 0.4,
-            fill: true
-          }]
-        }
-      });
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      Tabletop.init({
-        key: spreadsheetID,
-        simpleSheet: true,
-        callback: drawChart
-      });
-    });
-  </script>
+  <div id="chart_div"></div>
 
 </body>
 </html>
