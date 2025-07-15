@@ -12,18 +12,18 @@
     let scrollIndex = 0;
     const windowSize = 20;
     let currentTheme = 'dark';
+    let selectedRange = 1;
 
     function initDashboard() {
       drawChart();
-      setInterval(drawChart, 10000);
-      setInterval(() => drawChart(undefined, true), 3000);
+      setInterval(() => drawChart(selectedRange, true), 3000); // smooth scroll every 3s
     }
 
     google.charts.setOnLoadCallback(initDashboard);
 
-    function toggleTheme() {
-      currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      document.body.className = currentTheme;
+    function setTheme(theme) {
+      currentTheme = theme;
+      document.body.className = theme;
     }
 
     function filterData(days = 1) {
@@ -63,6 +63,7 @@
     }
 
     function drawChart(range = 1, scroll = false) {
+      selectedRange = range;
       const query = new google.visualization.Query(
         'https://docs.google.com/spreadsheets/d/1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM/gviz/tq?sheet=Sheet1&headers=1'
       );
@@ -110,7 +111,7 @@
           legend: { position: 'bottom' },
           hAxis: {
             title: 'เวลา',
-            format: 'HH:mm dd/MM',
+            format: 'HH:mm',
             slantedText: true,
           },
           vAxes: {
@@ -138,6 +139,14 @@
       background-color: #fff;
       color: #222;
     }
+    body.blue {
+      background-color: #e3f2fd;
+      color: #0d47a1;
+    }
+    body.red {
+      background-color: #ffebee;
+      color: #b71c1c;
+    }
     body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
@@ -152,7 +161,6 @@
     }
     .description {
       margin-bottom: 15px;
-      color: inherit;
     }
     #controls {
       margin-bottom: 15px;
@@ -162,7 +170,7 @@
       border: none;
       padding: 8px 16px;
       color: #fff;
-      margin: 0 5px;
+      margin: 5px;
       border-radius: 4px;
       cursor: pointer;
     }
@@ -199,7 +207,10 @@
     <button onclick="drawChart(1)">📅 1 วัน</button>
     <button onclick="drawChart(7)">📅 7 วัน</button>
     <button onclick="exportCSV()">📤 Export CSV</button>
-    <button onclick="toggleTheme()">🌓 Toggle Theme</button>
+    <button onclick="setTheme('dark')">🌙 Dark</button>
+    <button onclick="setTheme('light')">🔆 Light</button>
+    <button onclick="setTheme('blue')">🔵 Blue</button>
+    <button onclick="setTheme('red')">🔴 Red</button>
   </div>
   <div id="latestValues" role="region" aria-live="polite">
     <div>อุณหภูมิ: <span id="latestTemp" class="value">-- °C</span></div>
