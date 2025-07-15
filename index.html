@@ -1,22 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <title>ESP8266 Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.min.js"></script>
   <style>
     body {
-      font-family: sans-serif;
-      background-color: #f4f4f4;
-      padding: 20px;
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f8f9fa;
+      padding: 30px;
+      color: #333;
     }
     h1 {
-      font-size: 1.8em;
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+    p {
+      font-size: 16px;
+      margin-bottom: 20px;
     }
     canvas {
       max-width: 800px;
-      margin-top: 20px;
+      margin-bottom: 40px;
     }
   </style>
 </head>
@@ -29,8 +35,7 @@
   <canvas id="humChart"></canvas>
 
   <script>
-    const spreadsheetID = "1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM";  // เปลี่ยนเป็น ID ของคุณถ้าใช้ชีทอื่น
-    const sheetName = "Sheet1";
+    const spreadsheetID = "1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM"; // เปลี่ยน ID ตาม Google Sheets ของคุณ
 
     function drawChart(data) {
       const labels = [];
@@ -50,11 +55,23 @@
           datasets: [{
             label: 'อุณหภูมิ (°C)',
             data: temps,
+            borderColor: 'rgb(255, 99, 132)',
             backgroundColor: 'rgba(255, 99, 132, 0.2)',
-            borderColor: 'red',
             borderWidth: 2,
-            fill: true
+            fill: true,
+            tension: 0.3
           }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              title: {
+                display: true,
+                text: '°C'
+              }
+            }
+          }
         }
       });
 
@@ -65,11 +82,23 @@
           datasets: [{
             label: 'ความชื้น (%)',
             data: hums,
+            borderColor: 'rgb(54, 162, 235)',
             backgroundColor: 'rgba(54, 162, 235, 0.2)',
-            borderColor: 'blue',
             borderWidth: 2,
-            fill: true
+            fill: true,
+            tension: 0.3
           }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              title: {
+                display: true,
+                text: '%'
+              }
+            }
+          }
         }
       });
     }
