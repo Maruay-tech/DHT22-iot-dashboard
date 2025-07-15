@@ -1,221 +1,64 @@
+
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>🌡️ Realtime Temperature & 💧 Humidity Dashboard</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌡️ Realtime Temp & Humidity</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 10px;
-      background: #f4f7f9;
-      color: #222;
-    }
-
-    h2 {
-      text-align: center;
-      color: #0b3d91;
-      margin-bottom: 20px;
-      font-weight: 700;
-    }
-
-    .sensor-values {
-      display: flex;
-      justify-content: center;
-      gap: 40px;
-      margin-bottom: 30px;
-      flex-wrap: wrap;
-    }
-
-    .value-box {
-      background: white;
-      border-radius: 12px;
-      padding: 20px 30px;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-      min-width: 140px;
-      text-align: center;
-    }
-
-    .value-box .label {
-      font-size: 18px;
-      font-weight: 600;
-      color: #555;
-      margin-bottom: 8px;
-    }
-
-    .value-box .value {
-      font-size: 32px;
-      font-weight: 800;
-      color: #007acc;
-    }
-
-    #chartContainer {
-      max-width: 95vw;
-      margin: auto;
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-    }
-
-    @media (max-width: 480px) {
-      .sensor-values {
-        flex-direction: column;
-        gap: 20px;
-      }
-
-      .value-box {
-        min-width: 100%;
-        padding: 18px 20px;
-      }
-
-      .value-box .label {
-        font-size: 16px;
-      }
-
-      .value-box .value {
-        font-size: 28px;
-      }
-    }
+    body { font-family: sans-serif; margin: 20px; }
+    canvas { max-width: 100%; height: auto; }
+    h1 { font-size: 1.4em; text-align: center; }
   </style>
 </head>
 <body>
-
-<h2>🌡️ Real-time Temperature & 💧 Humidity Dashboard</h2>
-
-<div class="sensor-values">
-  <div class="value-box">
-    <div class="label">Temperature (°C)</div>
-    <div class="value" id="tempValue">--</div>
-  </div>
-  <div class="value-box">
-    <div class="label">Humidity (%)</div>
-    <div class="value" id="humValue">--</div>
-  </div>
-</div>
-
-<div id="chartContainer">
+  <h1>🌡️ Realtime Temperature & 💧 Humidity (Last 3 Months)</h1>
   <canvas id="chart"></canvas>
-</div>
 
-<script>
-  // TODO: แก้ไข config ตาม Firebase ของคุณเอง
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://esp8266-8198b-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
+  <script>
+    FileInputStream serviceAccount =
+new FileInputStream("path/to/serviceAccountKey.json");
 
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-  const dbRef = firebase.database().ref("/sensor");
+FirebaseOptions options = new FirebaseOptions.Builder()
+  .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+  .setDatabaseUrl("https://esp8266-8198b-default-rtdb.asia-southeast1.firebasedatabase.app")
+  .build();
 
-  // Chart.js Setup
-  const ctx = document.getElementById('chart').getContext('2d');
-  const chartData = {
-    labels: [],
-    datasets: [
-      {
-        label: 'Temperature (°C)',
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        data: [],
-        fill: true,
-        tension: 0.3,
-        yAxisID: 'y',
-      },
-      {
-        label: 'Humidity (%)',
-        borderColor: 'rgb(54, 162, 235)',
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        data: [],
-        fill: true,
-        tension: 0.3,
-        yAxisID: 'y1',
-      }
-    ]
-  };
+FirebaseApp.initializeApp(options);
 
-  const config = {
-    type: 'line',
-    data: chartData,
-    options: {
-      responsive: true,
-      interaction: {
-        mode: 'index',
-        intersect: false,
-      },
-      stacked: false,
-      scales: {
-        y: {
-          type: 'linear',
-          position: 'left',
-          title: { display: true, text: 'Temperature (°C)' },
-          min: 0,
-          max: 50
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const labels = [], temps = [], hums = [];
+    const now = Math.floor(Date.now() / 1000);
+    const start = now - 60 * 60 * 24 * 90;
+
+    db.ref("logs").orderByKey().startAt(String(start)).once("value", snapshot => {
+      snapshot.forEach(child => {
+        const t = new Date(child.key * 1000);
+        labels.push(t.toLocaleDateString() + " " + t.toLocaleTimeString());
+        temps.push(child.val().temperature);
+        hums.push(child.val().humidity);
+      });
+      renderChart();
+    });
+
+    function renderChart() {
+      new Chart(document.getElementById("chart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            { label: "Temperature (°C)", data: temps, borderColor: "red", fill: false },
+            { label: "Humidity (%)", data: hums, borderColor: "blue", fill: false }
+          ]
         },
-        y1: {
-          type: 'linear',
-          position: 'right',
-          title: { display: true, text: 'Humidity (%)' },
-          min: 0,
-          max: 100,
-          grid: { drawOnChartArea: false }
-        },
-        x: {
-          title: { display: true, text: 'Time' }
-        }
-      }
+        options: { responsive: true, maintainAspectRatio: false }
+      });
     }
-  };
-
-  const myChart = new Chart(ctx, config);
-
-  // ฟังก์ชันอัปเดตข้อมูลบนหน้าและกราฟ
-  function updateData(temp, hum) {
-    // แสดงค่าปัจจุบัน
-    document.getElementById('tempValue').textContent = temp.toFixed(2);
-    document.getElementById('humValue').textContent = hum.toFixed(2);
-
-    // เก็บเวลาปัจจุบันในรูปแบบ HH:MM:SS
-    const now = new Date();
-    const timeLabel = now.toLocaleTimeString();
-
-    // อัปเดตกราฟ
-    chartData.labels.push(timeLabel);
-    chartData.datasets[0].data.push(temp);
-    chartData.datasets[1].data.push(hum);
-
-    // จำกัดจุดกราฟแสดงแค่ 30 จุดล่าสุด
-    if (chartData.labels.length > 30) {
-      chartData.labels.shift();
-      chartData.datasets[0].data.shift();
-      chartData.datasets[1].data.shift();
-    }
-
-    myChart.update();
-  }
-
-  // ฟังชั่นดึงข้อมูล realtime จาก Firebase
-  dbRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      const temperature = parseFloat(data.temperature);
-      const humidity = parseFloat(data.humidity);
-
-      if (!isNaN(temperature) && !isNaN(humidity)) {
-        updateData(temperature, humidity);
-      }
-    }
-  });
-</script>
-
+  </script>
 </body>
 </html>
