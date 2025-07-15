@@ -1,43 +1,108 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Realtime Temperature & Humidity Dashboard</title>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 1rem;
-    background: #f4f6f8;
-  }
-  h2 {
-    text-align: center;
-  }
-  #current-values {
-    text-align: center;
-    font-size: 1.2rem;
-    margin-bottom: 1rem;
-  }
-  canvas {
-    max-width: 100%;
-    height: 300px;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🌡️ Realtime Temperature & 💧 Humidity Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 10px;
+      background: #f4f7f9;
+      color: #222;
+    }
+
+    h2 {
+      text-align: center;
+      color: #0b3d91;
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+
+    .sensor-values {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .value-box {
+      background: white;
+      border-radius: 12px;
+      padding: 20px 30px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+      min-width: 140px;
+      text-align: center;
+    }
+
+    .value-box .label {
+      font-size: 18px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    .value-box .value {
+      font-size: 32px;
+      font-weight: 800;
+      color: #007acc;
+    }
+
+    #chartContainer {
+      max-width: 95vw;
+      margin: auto;
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    }
+
+    @media (max-width: 480px) {
+      .sensor-values {
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .value-box {
+        min-width: 100%;
+        padding: 18px 20px;
+      }
+
+      .value-box .label {
+        font-size: 16px;
+      }
+
+      .value-box .value {
+        font-size: 28px;
+      }
+    }
+  </style>
 </head>
 <body>
 
-<h2>🌡️ Realtime Temperature & 💧 Humidity Dashboard</h2>
-<div id="current-values">
-  Temperature: <span id="temp-value">--</span> °C | Humidity: <span id="hum-value">--</span> %
+<h2>🌡️ Real-time Temperature & 💧 Humidity Dashboard</h2>
+
+<div class="sensor-values">
+  <div class="value-box">
+    <div class="label">Temperature (°C)</div>
+    <div class="value" id="tempValue">--</div>
+  </div>
+  <div class="value-box">
+    <div class="label">Humidity (%)</div>
+    <div class="value" id="humValue">--</div>
+  </div>
 </div>
 
-<canvas id="chart" aria-label="Temperature and Humidity chart" role="img"></canvas>
+<div id="chartContainer">
+  <canvas id="chart"></canvas>
+</div>
 
 <script>
-  // 1. Firebase config - แก้เป็นของคุณ
+  // TODO: แก้ไข config ตาม Firebase ของคุณเอง
   const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
     authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -48,45 +113,39 @@
     appId: "YOUR_APP_ID"
   };
 
-  // 2. Initialize Firebase
+  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const dbRef = firebase.database().ref("/sensor");
 
-  // 3. Prepare chart data arrays
-  const maxDataPoints = 50;
-  const timeLabels = [];
-  const temperatureData = [];
-  const humidityData = [];
-
-  // 4. Setup Chart.js
+  // Chart.js Setup
   const ctx = document.getElementById('chart').getContext('2d');
-  const chart = new Chart(ctx, {
+  const chartData = {
+    labels: [],
+    datasets: [
+      {
+        label: 'Temperature (°C)',
+        borderColor: 'rgb(255, 99, 132)',
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        data: [],
+        fill: true,
+        tension: 0.3,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Humidity (%)',
+        borderColor: 'rgb(54, 162, 235)',
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        data: [],
+        fill: true,
+        tension: 0.3,
+        yAxisID: 'y1',
+      }
+    ]
+  };
+
+  const config = {
     type: 'line',
-    data: {
-      labels: timeLabels,
-      datasets: [
-        {
-          label: 'Temperature (°C)',
-          data: temperatureData,
-          borderColor: 'rgba(255, 99, 132, 1)',
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          yAxisID: 'y',
-          tension: 0.3,
-          fill: true,
-          pointRadius: 2,
-        },
-        {
-          label: 'Humidity (%)',
-          data: humidityData,
-          borderColor: 'rgba(54, 162, 235, 1)',
-          backgroundColor: 'rgba(54, 162, 235, 0.2)',
-          yAxisID: 'y1',
-          tension: 0.3,
-          fill: true,
-          pointRadius: 2,
-        }
-      ]
-    },
+    data: chartData,
     options: {
       responsive: true,
       interaction: {
@@ -97,59 +156,64 @@
       scales: {
         y: {
           type: 'linear',
-          display: true,
           position: 'left',
-          suggestedMin: 15,
-          suggestedMax: 45,
-          title: {
-            display: true,
-            text: 'Temperature (°C)'
-          }
+          title: { display: true, text: 'Temperature (°C)' },
+          min: 0,
+          max: 50
         },
         y1: {
           type: 'linear',
-          display: true,
           position: 'right',
-          suggestedMin: 20,
-          suggestedMax: 90,
-          grid: {
-            drawOnChartArea: false,
-          },
-          title: {
-            display: true,
-            text: 'Humidity (%)'
-          }
+          title: { display: true, text: 'Humidity (%)' },
+          min: 0,
+          max: 100,
+          grid: { drawOnChartArea: false }
+        },
+        x: {
+          title: { display: true, text: 'Time' }
         }
       }
     }
-  });
+  };
 
-  // 5. Listen for realtime changes
-  dbRef.on('value', snapshot => {
-    const data = snapshot.val();
-    if (!data) return;
+  const myChart = new Chart(ctx, config);
 
+  // ฟังก์ชันอัปเดตข้อมูลบนหน้าและกราฟ
+  function updateData(temp, hum) {
+    // แสดงค่าปัจจุบัน
+    document.getElementById('tempValue').textContent = temp.toFixed(2);
+    document.getElementById('humValue').textContent = hum.toFixed(2);
+
+    // เก็บเวลาปัจจุบันในรูปแบบ HH:MM:SS
     const now = new Date();
     const timeLabel = now.toLocaleTimeString();
 
-    // Update current values display
-    document.getElementById('temp-value').textContent = data.temperature.toFixed(2);
-    document.getElementById('hum-value').textContent = data.humidity.toFixed(2);
+    // อัปเดตกราฟ
+    chartData.labels.push(timeLabel);
+    chartData.datasets[0].data.push(temp);
+    chartData.datasets[1].data.push(hum);
 
-    // Add new data points
-    timeLabels.push(timeLabel);
-    temperatureData.push(data.temperature);
-    humidityData.push(data.humidity);
-
-    // Keep array size to maxDataPoints
-    if (timeLabels.length > maxDataPoints) {
-      timeLabels.shift();
-      temperatureData.shift();
-      humidityData.shift();
+    // จำกัดจุดกราฟแสดงแค่ 30 จุดล่าสุด
+    if (chartData.labels.length > 30) {
+      chartData.labels.shift();
+      chartData.datasets[0].data.shift();
+      chartData.datasets[1].data.shift();
     }
 
-    // Update chart
-    chart.update();
+    myChart.update();
+  }
+
+  // ฟังชั่นดึงข้อมูล realtime จาก Firebase
+  dbRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      const temperature = parseFloat(data.temperature);
+      const humidity = parseFloat(data.humidity);
+
+      if (!isNaN(temperature) && !isNaN(humidity)) {
+        updateData(temperature, humidity);
+      }
+    }
   });
 </script>
 
