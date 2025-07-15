@@ -1,40 +1,71 @@
+<!-- เริ่มต้นโค้ด HTML สำหรับ Dashboard พร้อมฟีเจอร์ที่ร้องขอ -->
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>🌡️ ESP8266 Temperature & Humidity Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🌡️ ESP8266 Temp & Humidity Dashboard</title>
   <script src="https://www.gstatic.com/charts/loader.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
     google.charts.load('current', { packages: ['corechart'] });
-    google.charts.setOnLoadCallback(initDashboard);
+    let globalData;
 
     function initDashboard() {
       drawChart();
-      setInterval(drawChart, 3000); // อัปเดตทุก 3 วินาที
+      setInterval(drawChart, 10000);
     }
 
-    function drawChart() {
+    google.charts.setOnLoadCallback(initDashboard);
+
+    function filterData(days = 1) {
+      if (!globalData) return;
+      const now = new Date();
+      const rangeTime = now.getTime() - days * 24 * 60 * 60 * 1000;
+      const filteredData = new google.visualization.DataTable();
+      filteredData.addColumn('datetime', 'Time');
+      filteredData.addColumn('number', 'Temperature');
+      filteredData.addColumn('number', 'Humidity');
+
+      for (let i = 0; i < globalData.getNumberOfRows(); i++) {
+        const time = new Date(globalData.getValue(i, 0));
+        if (time.getTime() >= rangeTime) {
+          filteredData.addRow([
+            time,
+            globalData.getValue(i, 1),
+            globalData.getValue(i, 2)
+          ]);
+        }
+      }
+
+      return filteredData;
+    }
+
+    function exportCSV() {
+      if (!globalData) return;
+      let csv = 'Timestamp,Temperature,Humidity\n';
+      for (let i = 0; i < globalData.getNumberOfRows(); i++) {
+        const time = new Date(globalData.getValue(i, 0)).toISOString();
+        const temp = globalData.getValue(i, 1);
+        const hum = globalData.getValue(i, 2);
+        csv += `${time},${temp},${hum}\n`;
+      }
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      saveAs(blob, 'temperature_humidity_data.csv');
+    }
+
+    function drawChart(range = 1) {
       const query = new google.visualization.Query(
         'https://docs.google.com/spreadsheets/d/1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM/gviz/tq?sheet=Sheet1&headers=1'
       );
-
       query.send(response => {
-        if (response.isError()) {
-          alert('เกิดข้อผิดพลาด: ' + response.getMessage());
-          return;
-        }
+        if (response.isError()) return alert('Error: ' + response.getMessage());
+        globalData = response.getDataTable();
+        const filtered = filterData(range);
 
-        const data = response.getDataTable();
-        const lastRow = data.getNumberOfRows() - 1;
-        let temp = data.getValue(lastRow, 1);
-        let hum = data.getValue(lastRow, 2);
-
-        // หากมีค่าที่ผิดปกติ ลองย้อนขึ้นไปหาแถวก่อนหน้า
-        for (let i = lastRow; i >= 0 && (isNaN(temp) || isNaN(hum)); i--) {
-          temp = data.getValue(i, 1);
-          hum = data.getValue(i, 2);
-        }
+        const lastRow = filtered.getNumberOfRows() - 1;
+        const temp = filtered.getValue(lastRow, 1);
+        const hum = filtered.getValue(lastRow, 2);
 
         document.getElementById("latestTemp").textContent = `${temp.toFixed(2)} °C`;
         document.getElementById("latestHum").textContent = `${hum.toFixed(2)} %`;
@@ -42,138 +73,93 @@
         const options = {
           backgroundColor: 'transparent',
           chartArea: { width: '85%', height: '65%' },
-          legend: { position: 'bottom', textStyle: { fontSize: 14 } },
+          legend: { position: 'bottom' },
           hAxis: {
             title: 'เวลา',
-            textStyle: { color: '#555' },
+            format: 'HH:mm dd/MM',
             slantedText: true,
-            slantedTextAngle: 45,
           },
           vAxes: {
-            0: { title: 'อุณหภูมิ (°C)', textStyle: { color: '#e53935' } },
-            1: { title: 'ความชื้น (%)', textStyle: { color: '#1e88e5' } },
+            0: { title: 'Temp (°C)' },
+            1: { title: 'Humidity (%)' }
           },
           series: {
-            0: { targetAxisIndex: 0, color: '#e53935', lineWidth: 3, pointSize: 4 },
-            1: { targetAxisIndex: 1, color: '#1e88e5', lineWidth: 3, pointSize: 4 },
+            0: { targetAxisIndex: 0, color: '#ff5252', lineWidth: 2 },
+            1: { targetAxisIndex: 1, color: '#40c4ff', lineWidth: 2 }
           },
-          animation: {
-            startup: true,
-            duration: 700,
-            easing: 'out',
-          },
-          height: 420,
-          fontName: 'Segoe UI, sans-serif',
+          height: 400,
+          animation: { startup: true, duration: 800, easing: 'out' },
         };
 
-        const chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-        chart.draw(data, options);
+        new google.visualization.LineChart(document.getElementById('chart_div')).draw(filtered, options);
       });
     }
   </script>
-
   <style>
     body {
-      margin: 0;
-      padding: 40px 20px;
+      background-color: #121212;
+      color: #eee;
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #e0f7fa, #e3f2fd);
-      color: #333;
+      margin: 0;
+      padding: 30px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
     }
-
     h1 {
-      font-size: 2.4rem;
-      font-weight: bold;
-      color: #2c3e50;
+      color: #fff;
+      font-size: 2rem;
       margin-bottom: 10px;
     }
-
-    p.description {
-      font-size: 1.1rem;
-      color: #607d8b;
-      margin-bottom: 30px;
+    .description {
+      margin-bottom: 25px;
+      color: #aaa;
     }
-
+    #controls {
+      margin-bottom: 20px;
+    }
+    #controls button {
+      background: #1e88e5;
+      border: none;
+      padding: 8px 16px;
+      color: #fff;
+      margin: 0 5px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
     #latestValues {
       display: flex;
-      justify-content: center;
       gap: 40px;
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-      padding: 20px 40px;
-      margin-bottom: 40px;
-      font-size: 1.4rem;
-      font-weight: 600;
+      margin: 20px 0;
     }
-
-    #latestValues div {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
     .value {
-      margin-top: 8px;
-      font-size: 1.8rem;
+      font-size: 1.5rem;
       font-weight: bold;
     }
-
-    .temp {
-      color: #e53935;
-    }
-
-    .hum {
-      color: #1e88e5;
-    }
-
     #chart_div {
       width: 100%;
-      max-width: 960px;
-      min-height: 400px;
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      padding: 30px;
+      max-width: 900px;
     }
-
     @media (max-width: 600px) {
       #latestValues {
         flex-direction: column;
-        gap: 20px;
-        padding: 20px;
-      }
-
-      h1 {
-        font-size: 1.8rem;
-      }
-
-      #chart_div {
-        padding: 20px;
+        align-items: center;
       }
     }
   </style>
 </head>
-
 <body>
   <h1>📊 ESP8266 Temperature & Humidity Dashboard</h1>
-  <p class="description">ข้อมูลจาก Google Sheets (อัปเดตอัตโนมัติทุก 3 วินาที)</p>
-
-  <div id="latestValues" role="region" aria-live="polite">
-    <div>
-      อุณหภูมิ
-      <span id="latestTemp" class="value temp">-- °C</span>
-    </div>
-    <div>
-      ความชื้น
-      <span id="latestHum" class="value hum">-- %</span>
-    </div>
+  <p class="description">อัปเดตอัตโนมัติทุก 10 วินาที</p>
+  <div id="controls" role="region" aria-label="ตัวกรองและปุ่มควบคุม">
+    <button onclick="drawChart(1)">📅 1 วัน</button>
+    <button onclick="drawChart(7)">📅 7 วัน</button>
+    <button onclick="exportCSV()">📤 Export CSV</button>
   </div>
-
-  <div id="chart_div" role="img" aria-label="กราฟอุณหภูมิและความชื้นย้อนหลัง"></div>
+  <div id="latestValues" role="region" aria-live="polite">
+    <div>อุณหภูมิ: <span id="latestTemp" class="value">-- °C</span></div>
+    <div>ความชื้น: <span id="latestHum" class="value">-- %</span></div>
+  </div>
+  <div id="chart_div" role="img" aria-label="กราฟย้อนหลัง"></div>
 </body>
 </html>
