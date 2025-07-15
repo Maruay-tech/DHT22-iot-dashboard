@@ -1,22 +1,38 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🌡️ Realtime Temp & Humidity</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js"></script>
+  <title>🌡️ Realtime Temperature & 💧 Humidity (Last 3 Months)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    canvas { max-width: 100%; height: auto; }
-    h1 { font-size: 1.4em; text-align: center; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 1rem;
+      margin: 0;
+      background: #f8f9fa;
+    }
+    h2 {
+      text-align: center;
+    }
+    canvas {
+      max-width: 100%;
+      height: auto;
+    }
+    #chart-container {
+      width: 100%;
+      max-width: 1000px;
+      margin: auto;
+    }
   </style>
 </head>
 <body>
-  <h1>🌡️ Realtime Temperature & 💧 Humidity (Last 3 Months)</h1>
-  <canvas id="chart"></canvas>
+  <h2>🌡️ Realtime Temperature & 💧 Humidity (Last 3 Months)</h2>
+  <div id="chart-container">
+    <canvas id="sensorChart"></canvas>
+  </div>
 
   <script>
     FileInputStream serviceAccount =
@@ -29,36 +45,98 @@ FirebaseOptions options = new FirebaseOptions.Builder()
 
 FirebaseApp.initializeApp(options);
 
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    firebase.initializeApp(firebaseConfig);
 
-    const labels = [], temps = [], hums = [];
-    const now = Math.floor(Date.now() / 1000);
-    const start = now - 60 * 60 * 24 * 90;
+    const dbRef = firebase.database().ref("/sensorLogs"); // ใช้ path ตาม Firebase ของคุณ
 
-    db.ref("logs").orderByKey().startAt(String(start)).once("value", snapshot => {
-      snapshot.forEach(child => {
-        const t = new Date(child.key * 1000);
-        labels.push(t.toLocaleDateString() + " " + t.toLocaleTimeString());
-        temps.push(child.val().temperature);
-        hums.push(child.val().humidity);
-      });
-      renderChart();
+    const chartCtx = document.getElementById('sensorChart').getContext('2d');
+    const chart = new Chart(chartCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Temperature (°C)',
+            borderColor: 'red',
+            backgroundColor: 'rgba(255,0,0,0.1)',
+            data: [],
+            yAxisID: 'y',
+          },
+          {
+            label: 'Humidity (%)',
+            borderColor: 'blue',
+            backgroundColor: 'rgba(0,0,255,0.1)',
+            data: [],
+            yAxisID: 'y1',
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        stacked: false,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Time'
+            }
+          },
+          y: {
+            type: 'linear',
+            position: 'left',
+            title: {
+              display: true,
+              text: 'Temperature (°C)'
+            }
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            title: {
+              display: true,
+              text: 'Humidity (%)'
+            },
+            grid: {
+              drawOnChartArea: false
+            }
+          }
+        }
+      }
     });
 
-    function renderChart() {
-      new Chart(document.getElementById("chart"), {
-        type: "line",
-        data: {
-          labels,
-          datasets: [
-            { label: "Temperature (°C)", data: temps, borderColor: "red", fill: false },
-            { label: "Humidity (%)", data: hums, borderColor: "blue", fill: false }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
+    function updateChart(snapshot) {
+      const data = snapshot.val();
+      const now = Date.now();
+      const threeMonthsAgo = now - (90 * 24 * 60 * 60 * 1000);
+
+      const timestamps = [];
+      const temps = [];
+      const hums = [];
+
+      for (let key in data) {
+        const entry = data[key];
+        if (!entry.timestamp || entry.timestamp < threeMonthsAgo) continue;
+        const timeLabel = new Date(entry.timestamp).toLocaleString();
+        timestamps.push(timeLabel);
+        temps.push(entry.temperature);
+        hums.push(entry.humidity);
+      }
+
+      chart.data.labels = timestamps;
+      chart.data.datasets[0].data = temps;
+      chart.data.datasets[1].data = hums;
+      chart.update();
     }
+
+    // โหลดข้อมูลครั้งแรก
+    dbRef.once('value', updateChart);
+
+    // ติดตามแบบ realtime (optional)
+    dbRef.on('value', updateChart);
   </script>
 </body>
 </html>
