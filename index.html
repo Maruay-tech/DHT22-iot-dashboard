@@ -1,133 +1,157 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🌡️ Temp & 💧 Humidity Chart</title>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 10px;
-      background: #f0f0f0;
-    }
-    h2 {
-      text-align: center;
-    }
-    #latest-values {
-      text-align: center;
-      margin-bottom: 20px;
-      font-size: 18px;
-    }
-    canvas {
-      max-width: 100%;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Realtime Temperature & Humidity Dashboard</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 1rem;
+    background: #f4f6f8;
+  }
+  h2 {
+    text-align: center;
+  }
+  #current-values {
+    text-align: center;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  canvas {
+    max-width: 100%;
+    height: 300px;
+  }
+</style>
 </head>
 <body>
-  <h2>🌡️ Realtime Temperature & 💧 Humidity Chart</h2>
-  <div id="latest-values">Loading...</div>
-  <canvas id="realtimeChart" height="100"></canvas>
 
-  <script>
-    // TODO: Replace with your Firebase config
-    var firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://esp8266-8198b-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-    firebase.initializeApp(firebaseConfig);
-    var db = firebase.database();
+<h2>🌡️ Realtime Temperature & 💧 Humidity Dashboard</h2>
+<div id="current-values">
+  Temperature: <span id="temp-value">--</span> °C | Humidity: <span id="hum-value">--</span> %
+</div>
 
-    const ctx = document.getElementById('realtimeChart').getContext('2d');
-    const data = {
-      labels: [],
+<canvas id="chart" aria-label="Temperature and Humidity chart" role="img"></canvas>
+
+<script>
+  // 1. Firebase config - แก้เป็นของคุณ
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://esp8266-8198b-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  // 2. Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const dbRef = firebase.database().ref("/sensor");
+
+  // 3. Prepare chart data arrays
+  const maxDataPoints = 50;
+  const timeLabels = [];
+  const temperatureData = [];
+  const humidityData = [];
+
+  // 4. Setup Chart.js
+  const ctx = document.getElementById('chart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: timeLabels,
       datasets: [
         {
-          label: '🌡️ Temperature (°C)',
-          data: [],
-          borderColor: 'red',
-          backgroundColor: 'rgba(255,0,0,0.1)',
+          label: 'Temperature (°C)',
+          data: temperatureData,
+          borderColor: 'rgba(255, 99, 132, 1)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
           yAxisID: 'y',
+          tension: 0.3,
+          fill: true,
+          pointRadius: 2,
         },
         {
-          label: '💧 Humidity (%)',
-          data: [],
-          borderColor: 'blue',
-          backgroundColor: 'rgba(0,0,255,0.1)',
+          label: 'Humidity (%)',
+          data: humidityData,
+          borderColor: 'rgba(54, 162, 235, 1)',
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
           yAxisID: 'y1',
+          tension: 0.3,
+          fill: true,
+          pointRadius: 2,
         }
       ]
-    };
-
-    const chart = new Chart(ctx, {
-      type: 'line',
-      data: data,
-      options: {
-        responsive: true,
-        animation: false,
-        scales: {
-          y: {
-            type: 'linear',
-            position: 'left',
-            min: 0,
-            max: 100
+    },
+    options: {
+      responsive: true,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      stacked: false,
+      scales: {
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          suggestedMin: 15,
+          suggestedMax: 45,
+          title: {
+            display: true,
+            text: 'Temperature (°C)'
+          }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          suggestedMin: 20,
+          suggestedMax: 90,
+          grid: {
+            drawOnChartArea: false,
           },
-          y1: {
-            type: 'linear',
-            position: 'right',
-            min: 0,
-            max: 100,
-            grid: { drawOnChartArea: false }
+          title: {
+            display: true,
+            text: 'Humidity (%)'
           }
         }
       }
-    });
+    }
+  });
 
-    function updateChart(temp, humid) {
-      const now = new Date();
-      const timeLabel = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0') + ':' + now.getSeconds().toString().padStart(2, '0');
+  // 5. Listen for realtime changes
+  dbRef.on('value', snapshot => {
+    const data = snapshot.val();
+    if (!data) return;
 
-      data.labels.push(timeLabel);
-      data.datasets[0].data.push(temp);
-      data.datasets[1].data.push(humid);
+    const now = new Date();
+    const timeLabel = now.toLocaleTimeString();
 
-      if (data.labels.length > 30) {
-        data.labels.shift();
-        data.datasets[0].data.shift();
-        data.datasets[1].data.shift();
-      }
+    // Update current values display
+    document.getElementById('temp-value').textContent = data.temperature.toFixed(2);
+    document.getElementById('hum-value').textContent = data.humidity.toFixed(2);
 
-      chart.update();
-      document.getElementById('latest-values').innerHTML = `🌡️ Temp: ${temp.toFixed(1)} °C &nbsp;&nbsp; 💧 Humidity: ${humid.toFixed(1)} %`;
+    // Add new data points
+    timeLabels.push(timeLabel);
+    temperatureData.push(data.temperature);
+    humidityData.push(data.humidity);
+
+    // Keep array size to maxDataPoints
+    if (timeLabels.length > maxDataPoints) {
+      timeLabels.shift();
+      temperatureData.shift();
+      humidityData.shift();
     }
 
-    function listenFirebase() {
-      setInterval(() => {
-        Promise.all([
-          db.ref('/sensor/temperature').once('value'),
-          db.ref('/sensor/humidity').once('value')
-        ]).then(([tempSnap, humidSnap]) => {
-          const temp = tempSnap.val();
-          const humid = humidSnap.val();
-          if (temp !== null && humid !== null) {
-            updateChart(temp, humid);
-          }
-        });
-      }, 5000);
-    }
+    // Update chart
+    chart.update();
+  });
+</script>
 
-    listenFirebase();
-  </script>
 </body>
 </html>
