@@ -6,19 +6,30 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.min.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
-    canvas { max-width: 600px; margin-top: 20px; }
+    body {
+      font-family: sans-serif;
+      background-color: #f4f4f4;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 1.8em;
+    }
+    canvas {
+      max-width: 800px;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
 
   <h1>📊 ESP8266 Temperature & Humidity Dashboard</h1>
   <p>ข้อมูลจาก Google Sheets (อัปเดตทุกครั้งที่ ESP ส่ง)</p>
+
   <canvas id="tempChart"></canvas>
   <canvas id="humChart"></canvas>
 
   <script>
-    const spreadsheetID = "1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM";
+    const spreadsheetID = "1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM";  // เปลี่ยนเป็น ID ของคุณถ้าใช้ชีทอื่น
     const sheetName = "Sheet1";
 
     function drawChart(data) {
@@ -37,7 +48,7 @@
         data: {
           labels: labels,
           datasets: [{
-            label: 'Temperature (°C)',
+            label: 'อุณหภูมิ (°C)',
             data: temps,
             backgroundColor: 'rgba(255, 99, 132, 0.2)',
             borderColor: 'red',
@@ -52,7 +63,7 @@
         data: {
           labels: labels,
           datasets: [{
-            label: 'Humidity (%)',
+            label: 'ความชื้น (%)',
             data: hums,
             backgroundColor: 'rgba(54, 162, 235, 0.2)',
             borderColor: 'blue',
@@ -71,5 +82,6 @@
       });
     });
   </script>
+
 </body>
 </html>
