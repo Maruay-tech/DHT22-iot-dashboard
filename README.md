@@ -1,1 +1,1 @@
-# iot-dashboard1
+# DHT22-iot-dashboard
