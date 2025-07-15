@@ -2,11 +2,17 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>📊 ESP8266 Temperature & Humidity Dashboard</title>
+  <title>📊 ESP8266 Temperature & Humidity Dashboard (Realtime)</title>
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
     google.charts.load('current', {'packages':['corechart']});
-    google.charts.setOnLoadCallback(drawChart);
+    google.charts.setOnLoadCallback(initialize);
+
+    function initialize() {
+      drawChart();
+      // ตั้งเวลาให้รีเฟรชกราฟทุก 30,000 ms (30 วินาที)
+      setInterval(drawChart, 30000);
+    }
 
     function drawChart() {
       var queryString = encodeURIComponent('SELECT A, B, C');
@@ -22,10 +28,20 @@
 
         var data = response.getDataTable();
 
-        // ดึงค่าล่าสุด (แถวสุดท้าย) มาแสดงตัวเลข
         var lastRow = data.getNumberOfRows() - 1;
-        var latestTemp = data.getValue(lastRow, 1); // คอลัมน์ B = Temperature
-        var latestHum = data.getValue(lastRow, 2);  // คอลัมน์ C = Humidity
+        var latestTemp = data.getValue(lastRow, 1);
+        var latestHum = data.getValue(lastRow, 2);
+
+        if (isNaN(latestTemp) || isNaN(latestHum)) {
+          for (var i = lastRow - 1; i >= 0; i--) {
+            latestTemp = data.getValue(i, 1);
+            latestHum = data.getValue(i, 2);
+            if (!isNaN(latestTemp) && !isNaN(latestHum)) {
+              break;
+            }
+          }
+        }
+
         document.getElementById('latestTemp').textContent = latestTemp.toFixed(2) + ' °C';
         document.getElementById('latestHum').textContent = latestHum.toFixed(2) + ' %';
 
@@ -100,7 +116,7 @@
   </style>
 </head>
 <body>
-  <h1>📊 ESP8266 Temperature & Humidity Dashboard</h1>
+  <h1>📊 ESP8266 Temperature & Humidity Dashboard (Realtime)</h1>
   <p>ข้อมูลจาก Google Sheets (อัปเดตทุกครั้งที่ ESP ส่ง)</p>
 
   <div id="latestValues">
