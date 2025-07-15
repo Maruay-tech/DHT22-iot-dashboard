@@ -10,15 +10,21 @@
     google.charts.load('current', { packages: ['corechart'] });
     let globalData;
     let scrollIndex = 0;
-    const windowSize = 20; // จำนวนข้อมูลที่แสดงพร้อมกัน
+    const windowSize = 20;
+    let currentTheme = 'dark';
 
     function initDashboard() {
       drawChart();
       setInterval(drawChart, 10000);
-      setInterval(() => drawChart(undefined, true), 3000); // อัปเดตกราฟเลื่อนทุก 3 วินาที
+      setInterval(() => drawChart(undefined, true), 3000);
     }
 
     google.charts.setOnLoadCallback(initDashboard);
+
+    function toggleTheme() {
+      currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.body.className = currentTheme;
+    }
 
     function filterData(days = 1) {
       if (!globalData) return;
@@ -89,6 +95,15 @@
           ]);
         }
 
+        const temps = scrollData.getFilteredRows([{ column: 1 }]).map(i => scrollData.getValue(i, 1));
+        const hums = scrollData.getFilteredRows([{ column: 2 }]).map(i => scrollData.getValue(i, 2));
+        const maxTemp = Math.max(...temps);
+        const minTemp = Math.min(...temps);
+        const maxHum = Math.max(...hums);
+        const minHum = Math.min(...hums);
+
+        document.getElementById("minMaxInfo").textContent = `🌡️ Max Temp: ${maxTemp.toFixed(1)}°C / Min Temp: ${minTemp.toFixed(1)}°C | 💧 Max Hum: ${maxHum.toFixed(1)}% / Min Hum: ${minHum.toFixed(1)}%`;
+
         const options = {
           backgroundColor: 'transparent',
           chartArea: { width: '85%', height: '65%' },
@@ -115,9 +130,15 @@
     }
   </script>
   <style>
-    body {
+    body.dark {
       background-color: #121212;
       color: #eee;
+    }
+    body.light {
+      background-color: #fff;
+      color: #222;
+    }
+    body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
       padding: 30px;
@@ -126,16 +147,15 @@
       align-items: center;
     }
     h1 {
-      color: #fff;
       font-size: 2rem;
       margin-bottom: 10px;
     }
     .description {
-      margin-bottom: 25px;
-      color: #aaa;
+      margin-bottom: 15px;
+      color: inherit;
     }
     #controls {
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
     #controls button {
       background: #1e88e5;
@@ -159,6 +179,11 @@
       width: 100%;
       max-width: 900px;
     }
+    #minMaxInfo {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: gray;
+    }
     @media (max-width: 600px) {
       #latestValues {
         flex-direction: column;
@@ -167,18 +192,20 @@
     }
   </style>
 </head>
-<body>
+<body class="dark">
   <h1>📊 ESP8266 Temperature & Humidity Dashboard</h1>
   <p class="description">อัปเดตอัตโนมัติทุก 10 วินาที</p>
   <div id="controls" role="region" aria-label="ตัวกรองและปุ่มควบคุม">
     <button onclick="drawChart(1)">📅 1 วัน</button>
     <button onclick="drawChart(7)">📅 7 วัน</button>
     <button onclick="exportCSV()">📤 Export CSV</button>
+    <button onclick="toggleTheme()">🌓 Toggle Theme</button>
   </div>
   <div id="latestValues" role="region" aria-live="polite">
     <div>อุณหภูมิ: <span id="latestTemp" class="value">-- °C</span></div>
     <div>ความชื้น: <span id="latestHum" class="value">-- %</span></div>
   </div>
   <div id="chart_div" role="img" aria-label="กราฟย้อนหลัง"></div>
+  <div id="minMaxInfo"></div>
 </body>
 </html>
