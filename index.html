@@ -13,13 +13,28 @@
     const windowSize = 20;
     let currentTheme = 'dark';
     let selectedRange = 1;
+    let autoScroll = true;
 
     function initDashboard() {
       drawChart();
-      setInterval(() => drawChart(selectedRange, true), 3000); // smooth scroll every 3s
+      updateClock();
+      setInterval(() => {
+        if (autoScroll) drawChart(selectedRange, true);
+      }, 3000);
+      setInterval(updateClock, 1000);
     }
 
     google.charts.setOnLoadCallback(initDashboard);
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString();
+    }
+
+    function toggleScroll() {
+      autoScroll = !autoScroll;
+      document.getElementById("toggleScrollBtn").textContent = autoScroll ? "⏸️ Pause" : "▶️ Resume";
+    }
 
     function setTheme(theme) {
       currentTheme = theme;
@@ -131,22 +146,10 @@
     }
   </script>
   <style>
-    body.dark {
-      background-color: #121212;
-      color: #eee;
-    }
-    body.light {
-      background-color: #fff;
-      color: #222;
-    }
-    body.blue {
-      background-color: #e3f2fd;
-      color: #0d47a1;
-    }
-    body.red {
-      background-color: #ffebee;
-      color: #b71c1c;
-    }
+    body.dark { background-color: #121212; color: #eee; }
+    body.light { background-color: #fff; color: #222; }
+    body.blue { background-color: #e3f2fd; color: #0d47a1; }
+    body.red { background-color: #ffebee; color: #b71c1c; }
     body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
@@ -159,12 +162,8 @@
       font-size: 2rem;
       margin-bottom: 10px;
     }
-    .description {
-      margin-bottom: 15px;
-    }
-    #controls {
-      margin-bottom: 15px;
-    }
+    .description { margin-bottom: 15px; }
+    #controls { margin-bottom: 15px; }
     #controls button {
       background: #1e88e5;
       border: none;
@@ -192,17 +191,18 @@
       font-size: 0.9rem;
       color: gray;
     }
+    #clock {
+      font-size: 1.2rem;
+      margin-top: 10px;
+    }
     @media (max-width: 600px) {
-      #latestValues {
-        flex-direction: column;
-        align-items: center;
-      }
+      #latestValues { flex-direction: column; align-items: center; }
     }
   </style>
 </head>
 <body class="dark">
   <h1>📊 ESP8266 Temperature & Humidity Dashboard</h1>
-  <p class="description">อัปเดตอัตโนมัติทุก 10 วินาที</p>
+  <p class="description">อัปเดตอัตโนมัติทุก 10 วินาที | 🕒 <span id="clock">--:--:--</span></p>
   <div id="controls" role="region" aria-label="ตัวกรองและปุ่มควบคุม">
     <button onclick="drawChart(1)">📅 1 วัน</button>
     <button onclick="drawChart(7)">📅 7 วัน</button>
@@ -211,6 +211,7 @@
     <button onclick="setTheme('light')">🔆 Light</button>
     <button onclick="setTheme('blue')">🔵 Blue</button>
     <button onclick="setTheme('red')">🔴 Red</button>
+    <button onclick="toggleScroll()" id="toggleScrollBtn">⏸️ Pause</button>
   </div>
   <div id="latestValues" role="region" aria-live="polite">
     <div>อุณหภูมิ: <span id="latestTemp" class="value">-- °C</span></div>
