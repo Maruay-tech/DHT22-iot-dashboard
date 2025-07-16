@@ -132,7 +132,12 @@
           hAxis: { title: 'เวลา', format: 'HH:mm', direction: -1 },
           vAxis: { title: '°C' },
           series: { 0: { color: '#ff5252' } },
-          height: 250
+          height: 250,
+          animation: { startup: true, duration: 800, easing: 'inAndOut' },
+          annotations: {
+            alwaysOutside: true,
+            textStyle: { fontSize: 12, color: '#000' }
+          }
         };
 
         const humOptions = {
@@ -143,7 +148,12 @@
           hAxis: { title: 'เวลา', format: 'HH:mm', direction: -1 },
           vAxis: { title: '%' },
           series: { 0: { color: '#40c4ff' } },
-          height: 250
+          height: 250,
+          animation: { startup: true, duration: 800, easing: 'inAndOut' },
+          annotations: {
+            alwaysOutside: true,
+            textStyle: { fontSize: 12, color: '#000' }
+          }
         };
 
         new google.visualization.LineChart(document.getElementById('chart_hum')).draw(humData, humOptions);
@@ -156,6 +166,9 @@
     body.light { background-color: #fff; color: #222; }
     body.blue { background-color: #e3f2fd; color: #0d47a1; }
     body.red { background-color: #ffebee; color: #b71c1c; }
+    body.green { background-color: #e8f5e9; color: #1b5e20; }
+    body.purple { background-color: #f3e5f5; color: #4a148c; }
+    body.yellow { background-color: #fffde7; color: #f57f17; }
     body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
@@ -164,10 +177,7 @@
       flex-direction: column;
       align-items: center;
     }
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 10px;
-    }
+    h1 { font-size: 2rem; margin-bottom: 10px; }
     .description { margin-bottom: 15px; }
     #controls { margin-bottom: 15px; }
     #controls select, #controls button {
@@ -184,14 +194,8 @@
       gap: 40px;
       margin: 20px 0;
     }
-    .value {
-      font-size: 1.5rem;
-      font-weight: bold;
-    }
-    .chart-container {
-      width: 100%;
-      max-width: 900px;
-    }
+    .value { font-size: 1.5rem; font-weight: bold; }
+    .chart-container { width: 100%; max-width: 900px; }
     #clock { font-size: 1.2rem; margin-top: 10px; }
     @media (max-width: 600px) {
       #latestValues { flex-direction: column; align-items: center; }
@@ -204,14 +208,16 @@
   <div id="controls" role="region" aria-label="ตัวกรองและปุ่มควบคุม">
     <button onclick="drawChart(1)">📅 1 วัน</button>
     <button onclick="drawChart(7)">📅 7 วัน</button>
-        <button onclick="drawChart(30)">📅 30 วัน</button>
-
+        <button onclick="drawChart(7)">📅 30 วัน</button>
     <button onclick="exportCSV()">📤 Export CSV</button>
     <select onchange="setTheme(this)">
       <option value="dark" selected>🌙 Dark</option>
       <option value="light">🔆 Light</option>
       <option value="blue">🔵 Blue</option>
       <option value="red">🔴 Red</option>
+      <option value="green">🟢 Green</option>
+      <option value="purple">🟣 Purple</option>
+      <option value="yellow">🟡 Yellow</option>
     </select>
     <button onclick="toggleScroll()" id="toggleScrollBtn">⏸️ Pause</button>
   </div>
