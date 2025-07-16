@@ -6,6 +6,8 @@
   <title>🌡️ ESP8266 Temp & Humidity Dashboard</title>
   <script src="https://www.gstatic.com/charts/loader.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     google.charts.load('current', { packages: ['corechart'] });
     let globalData;
@@ -20,7 +22,7 @@
       updateClock();
       setInterval(() => {
         if (autoScroll) drawChart(selectedRange, true);
-      }, 1000);
+      }, 3000);
       setInterval(updateClock, 1000);
     }
 
@@ -77,6 +79,19 @@
       saveAs(blob, 'temperature_humidity_data.csv');
     }
 
+    async function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+      const charts = document.querySelectorAll('.chart-container');
+      for (let i = 0; i < charts.length; i++) {
+        const canvas = await html2canvas(charts[i]);
+        const imgData = canvas.toDataURL('image/png');
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 10, 10, 190, 100);
+      }
+      pdf.save('dashboard.pdf');
+    }
+
     function drawChart(range = 1, scroll = false) {
       selectedRange = range;
       const query = new google.visualization.Query(
@@ -124,37 +139,32 @@
           humData.addRow([scrollData.getValue(i, 0), scrollData.getValue(i, 2)]);
         }
 
-        const tempOptions = {
-          title: 'Temperature (°C)',
+        const commonOptions = {
           backgroundColor: 'transparent',
           legend: 'none',
           chartArea: { width: '85%', height: '65%' },
           hAxis: { title: 'เวลา', format: 'HH:mm', direction: -1 },
-          vAxis: { title: '°C' },
-          series: { 0: { color: '#ff5252' } },
-          height: 250,
           animation: { startup: true, duration: 800, easing: 'inAndOut' },
           annotations: {
             alwaysOutside: true,
             textStyle: { fontSize: 12, color: '#000' }
+          },
+          tooltip: {
+            isHtml: true
           }
         };
 
-        const humOptions = {
+        const tempOptions = Object.assign({}, commonOptions, {
+          title: 'Temperature (°C)',
+          vAxis: { title: '°C' },
+          series: { 0: { color: '#ff5252' } }
+        });
+
+        const humOptions = Object.assign({}, commonOptions, {
           title: 'Humidity (%)',
-          backgroundColor: 'transparent',
-          legend: 'none',
-          chartArea: { width: '85%', height: '65%' },
-          hAxis: { title: 'เวลา', format: 'HH:mm', direction: -1 },
           vAxis: { title: '%' },
-          series: { 0: { color: '#40c4ff' } },
-          height: 250,
-          animation: { startup: true, duration: 800, easing: 'inAndOut' },
-          annotations: {
-            alwaysOutside: true,
-            textStyle: { fontSize: 12, color: '#000' }
-          }
-        };
+          series: { 0: { color: '#40c4ff' } }
+        });
 
         new google.visualization.LineChart(document.getElementById('chart_hum')).draw(humData, humOptions);
         new google.visualization.LineChart(document.getElementById('chart_temp')).draw(tempData, tempOptions);
@@ -208,8 +218,9 @@
   <div id="controls" role="region" aria-label="ตัวกรองและปุ่มควบคุม">
     <button onclick="drawChart(1)">📅 1 วัน</button>
     <button onclick="drawChart(7)">📅 7 วัน</button>
-        <button onclick="drawChart(7)">📅 30 วัน</button>
+    <button onclick="drawChart(7)">📅 30 วัน</button>
     <button onclick="exportCSV()">📤 Export CSV</button>
+    <button onclick="exportPDF()">📄 Export PDF</button>
     <select onchange="setTheme(this)">
       <option value="dark" selected>🌙 Dark</option>
       <option value="light">🔆 Light</option>
