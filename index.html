@@ -1,180 +1,66 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🌡️ ESP8266 Temp & Humidity Dashboard</title>
+
+  <!-- Google Charts + PDF Export Libs -->
   <script src="https://www.gstatic.com/charts/loader.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script>
-    google.charts.load('current', { packages: ['corechart'] });
-    let globalData;
-    let scrollIndex = 0;
-    const windowSize = 20;
-    let currentTheme = 'dark';
-    let selectedRange = 1;
-    let autoScroll = true;
 
-    function initDashboard() {
-      drawChart();
-      updateClock();
-      setInterval(() => {
-        if (autoScroll) drawChart(selectedRange, true);
-      }, 3000);
-      setInterval(updateClock, 1000);
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      margin: 20px;
+      transition: background-color 0.5s, color 0.5s;
+    }
+    h1 {
+      font-size: 22px;
+    }
+    #controls {
+      margin: 10px 0;
+    }
+    #controls button, #controls select {
+      padding: 6px 12px;
+      margin: 5px;
+    }
+    .chart-container {
+      width: 100%;
+      height: 350px;
+    }
+    #latestValues {
+      font-size: 18px;
+      margin-top: 10px;
+      display: flex;
+      gap: 25px;
+      flex-wrap: wrap;
+    }
+    .description {
+      margin-bottom: 10px;
     }
 
-    google.charts.setOnLoadCallback(initDashboard);
-
-    function updateClock() {
-      const now = new Date();
-      document.getElementById('clock').textContent = now.toLocaleTimeString();
-    }
-
-    function toggleScroll() {
-      autoScroll = !autoScroll;
-      document.getElementById("toggleScrollBtn").textContent = autoScroll ? "⏸️ Pause" : "▶️ Resume";
-    }
-
-    function setTheme(select) {
-      currentTheme = select.value;
-      document.body.className = currentTheme;
-    }
-
-    function filterData(days = 1) {
-      if (!globalData) return;
-      const now = new Date();
-      const rangeTime = now.getTime() - days * 24 * 60 * 60 * 1000;
-      const filteredData = new google.visualization.DataTable();
-      filteredData.addColumn('datetime', 'Time');
-      filteredData.addColumn('number', 'Temperature');
-      filteredData.addColumn('number', 'Humidity');
-      filteredData.addColumn({type: 'string', role: 'tooltip', p: {html: true}});
-      filteredData.addColumn({type: 'string', role: 'tooltip', p: {html: true}});
-
-      for (let i = 0; i < globalData.getNumberOfRows(); i++) {
-        const time = new Date(globalData.getValue(i, 0));
-        if (time.getTime() >= rangeTime) {
-          const temp = globalData.getValue(i, 1);
-          const hum = globalData.getValue(i, 2);
-          const tooltipTemp = `<div style='padding:5px'><b>🌡️ Temperature:</b> ${temp.toFixed(2)} °C<br><i>${time.toLocaleTimeString()}</i></div>`;
-          const tooltipHum = `<div style='padding:5px'><b>💧 Humidity:</b> ${hum.toFixed(2)} %<br><i>${time.toLocaleTimeString()}</i></div>`;
-          filteredData.addRow([time, temp, hum, tooltipTemp, tooltipHum]);
-        }
-      }
-
-      return filteredData;
-    }
-
-    function exportPDF() {
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF();
-      const chartArea = document.createElement('div');
-      chartArea.style.width = '900px';
-      chartArea.style.padding = '10px';
-      const clone1 = document.getElementById('chart_hum').cloneNode(true);
-      const clone2 = document.getElementById('chart_temp').cloneNode(true);
-      chartArea.appendChild(clone1);
-      chartArea.appendChild(clone2);
-      document.body.appendChild(chartArea);
-      html2canvas(chartArea).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', 5, 5, 200, 150);
-        pdf.save('dashboard.pdf');
-        document.body.removeChild(chartArea);
-      });
-    }
-
-    function exportCSV() {
-      if (!globalData) return;
-      let csv = 'Timestamp,Temperature,Humidity\n';
-      for (let i = 0; i < globalData.getNumberOfRows(); i++) {
-        const time = new Date(globalData.getValue(i, 0)).toISOString();
-        const temp = globalData.getValue(i, 1);
-        const hum = globalData.getValue(i, 2);
-        csv += `${time},${temp},${hum}\n`;
-      }
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      saveAs(blob, 'temperature_humidity_data.csv');
-    }
-
-    function drawChart(range = 1, scroll = false) {
-      selectedRange = range;
-      const query = new google.visualization.Query(
-        'https://docs.google.com/spreadsheets/d/1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM/gviz/tq?sheet=Sheet1&headers=1'
-      );
-      query.send(response => {
-        if (response.isError()) return alert('Error: ' + response.getMessage());
-        globalData = response.getDataTable();
-        const filtered = filterData(range);
-
-        const lastRow = filtered.getNumberOfRows() - 1;
-        const temp = filtered.getValue(lastRow, 1);
-        const hum = filtered.getValue(lastRow, 2);
-
-        document.getElementById("latestTemp").textContent = `${temp.toFixed(2)} °C`;
-        document.getElementById("latestHum").textContent = `${hum.toFixed(2)} %`;
-
-        const tempData = new google.visualization.DataTable();
-        tempData.addColumn('datetime', 'Time');
-        tempData.addColumn('number', 'Temperature');
-        tempData.addColumn({type: 'string', role: 'tooltip', p: {html: true}});
-
-        const humData = new google.visualization.DataTable();
-        humData.addColumn('datetime', 'Time');
-        humData.addColumn('number', 'Humidity');
-        humData.addColumn({type: 'string', role: 'tooltip', p: {html: true}});
-
-        for (let i = 0; i < filtered.getNumberOfRows(); i++) {
-          const time = filtered.getValue(i, 0);
-          const t = filtered.getValue(i, 1);
-          const h = filtered.getValue(i, 2);
-          const tt = filtered.getValue(i, 3);
-          const hh = filtered.getValue(i, 4);
-          tempData.addRow([time, t, tt]);
-          humData.addRow([time, h, hh]);
-        }
-
-        const commonOptions = {
-          backgroundColor: 'transparent',
-          legend: 'none',
-          chartArea: { width: '85%', height: '65%' },
-          hAxis: { title: 'เวลา', format: 'HH:mm', direction: -1 },
-          animation: { startup: true, duration: 800, easing: 'inAndOut' },
-          tooltip: { isHtml: true },
-          annotations: {
-            alwaysOutside: true,
-            textStyle: { fontSize: 12, color: '#000' }
-          }
-        };
-
-        const tempOptions = Object.assign({}, commonOptions, {
-          title: 'Temperature (°C)',
-          vAxis: { title: '°C' },
-          series: { 0: { color: '#ff5252' } }
-        });
-
-        const humOptions = Object.assign({}, commonOptions, {
-          title: 'Humidity (%)',
-          vAxis: { title: '%' },
-          series: { 0: { color: '#40c4ff' } }
-        });
-
-        new google.visualization.LineChart(document.getElementById('chart_hum')).draw(humData, humOptions);
-        new google.visualization.LineChart(document.getElementById('chart_temp')).draw(tempData, tempOptions);
-      });
-    }
-  </script>
+    /* Themes */
+    body.dark { background: #121212; color: #fff; }
+    body.light { background: #fff; color: #000; }
+    body.blue { background: #e3f2fd; color: #0d47a1; }
+    body.red { background: #ffebee; color: #b71c1c; }
+    body.green { background: #e8f5e9; color: #1b5e20; }
+    body.purple { background: #f3e5f5; color: #4a148c; }
+    body.yellow { background: #fffde7; color: #f57f17; }
+  </style>
 </head>
+
 <body class="dark">
   <h1>📊 ESP8266 Temperature & Humidity Dashboard</h1>
   <p class="description">อัปเดตอัตโนมัติทุก 10 วินาที | 🕒 <span id="clock">--:--:--</span></p>
+
   <div id="controls">
     <button onclick="drawChart(1)">📅 1 วัน</button>
     <button onclick="drawChart(7)">📅 7 วัน</button>
-    <button onclick="drawChart(7)">📅 15 วัน</button>
+        <button onclick="drawChart(7)">📅 15 วัน</button>
     <button onclick="exportCSV()">📤 Export CSV</button>
     <button onclick="exportPDF()">📄 Export PDF</button>
     <select onchange="setTheme(this)">
@@ -188,11 +74,134 @@
     </select>
     <button onclick="toggleScroll()" id="toggleScrollBtn">⏸️ Pause</button>
   </div>
+
   <div id="latestValues">
-    <div>อุณหภูมิ: <span id="latestTemp">-- °C</span></div>
-    <div>ความชื้น: <span id="latestHum">-- %</span></div>
+    <div>🌡️ อุณหภูมิ: <span id="latestTemp">-- °C</span></div>
+    <div>💧 ความชื้น: <span id="latestHum">-- %</span></div>
   </div>
+
   <div class="chart-container" id="chart_hum"></div>
   <div class="chart-container" id="chart_temp"></div>
+
+  <script>
+    google.charts.load('current', { packages: ['corechart'] });
+    let globalData;
+    let autoScroll = true;
+    let currentTheme = 'dark';
+    let selectedRange = 1;
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("clock").textContent = now.toLocaleTimeString();
+    }
+
+    function setTheme(select) {
+      currentTheme = select.value;
+      document.body.className = currentTheme;
+    }
+
+    function toggleScroll() {
+      autoScroll = !autoScroll;
+      document.getElementById("toggleScrollBtn").textContent = autoScroll ? "⏸️ Pause" : "▶️ Resume";
+    }
+
+    function drawChart(days = 1) {
+      selectedRange = days;
+      const query = new google.visualization.Query(
+        "https://docs.google.com/spreadsheets/d/1sPCqSO142HEMHs4M_lzzEVFTDGchk7GkRILvnzwI3UM/gviz/tq?sheet=Sheet1&headers=1"
+      );
+      query.send(response => {
+        if (response.isError()) return alert("ERROR: " + response.getMessage());
+        globalData = response.getDataTable();
+
+        const now = new Date();
+        const rangeTime = now.getTime() - days * 24 * 60 * 60 * 1000;
+
+        const tempData = new google.visualization.DataTable();
+        const humData = new google.visualization.DataTable();
+
+        tempData.addColumn("datetime", "Time");
+        tempData.addColumn("number", "Temperature");
+        tempData.addColumn({ type: "string", role: "tooltip", p: { html: true } });
+
+        humData.addColumn("datetime", "Time");
+        humData.addColumn("number", "Humidity");
+        humData.addColumn({ type: "string", role: "tooltip", p: { html: true } });
+
+        for (let i = 0; i < globalData.getNumberOfRows(); i++) {
+          const time = new Date(globalData.getValue(i, 0));
+          if (time.getTime() >= rangeTime) {
+            const t = globalData.getValue(i, 1);
+            const h = globalData.getValue(i, 2);
+            const tt = `<div style='padding:5px'><b>🌡️ Temp:</b> ${t.toFixed(2)} °C<br><i>${time.toLocaleTimeString()}</i></div>`;
+            const hh = `<div style='padding:5px'><b>💧 Hum:</b> ${h.toFixed(2)} %<br><i>${time.toLocaleTimeString()}</i></div>`;
+            tempData.addRow([time, t, tt]);
+            humData.addRow([time, h, hh]);
+          }
+        }
+
+        const lastRow = tempData.getNumberOfRows() - 1;
+        if (lastRow >= 0) {
+          document.getElementById("latestTemp").textContent = `${tempData.getValue(lastRow, 1).toFixed(2)} °C`;
+          document.getElementById("latestHum").textContent = `${humData.getValue(lastRow, 1).toFixed(2)} %`;
+        }
+
+        const options = {
+          backgroundColor: "transparent",
+          legend: "none",
+          chartArea: { width: "85%", height: "65%" },
+          hAxis: { title: "เวลา", format: "HH:mm", direction: -1 },
+          animation: { startup: true, duration: 700, easing: "out" },
+          tooltip: { isHtml: true },
+        };
+
+        new google.visualization.LineChart(document.getElementById("chart_temp")).draw(tempData, {
+          ...options,
+          title: "Temperature (°C)",
+          vAxis: { title: "°C" },
+          series: { 0: { color: "#ff5252" } }
+        });
+
+        new google.visualization.LineChart(document.getElementById("chart_hum")).draw(humData, {
+          ...options,
+          title: "Humidity (%)",
+          vAxis: { title: "%" },
+          series: { 0: { color: "#40c4ff" } }
+        });
+      });
+    }
+
+    function exportCSV() {
+      if (!globalData) return;
+      let csv = "Timestamp,Temperature,Humidity\\n";
+      for (let i = 0; i < globalData.getNumberOfRows(); i++) {
+        const t = new Date(globalData.getValue(i, 0)).toISOString();
+        const temp = globalData.getValue(i, 1);
+        const hum = globalData.getValue(i, 2);
+        csv += `${t},${temp},${hum}\\n`;
+      }
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      saveAs(blob, "temperature_humidity.csv");
+    }
+
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+      html2canvas(document.body).then(canvas => {
+        const imgData = canvas.toDataURL("image/png");
+        pdf.addImage(imgData, "PNG", 10, 10, 190, 140);
+        pdf.save("dashboard.pdf");
+      });
+    }
+
+    google.charts.setOnLoadCallback(() => {
+      drawChart();
+      updateClock();
+      setInterval(() => {
+        if (autoScroll) drawChart(selectedRange);
+      }, 10000);
+      setInterval(updateClock, 1000);
+    });
+  </script>
 </body>
 </html>
