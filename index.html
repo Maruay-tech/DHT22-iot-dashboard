@@ -51,19 +51,40 @@
       filteredData.addColumn('datetime', 'Time');
       filteredData.addColumn('number', 'Temperature');
       filteredData.addColumn('number', 'Humidity');
+      filteredData.addColumn({type: 'string', role: 'tooltip', p: {html: true}});
+      filteredData.addColumn({type: 'string', role: 'tooltip', p: {html: true}});
 
       for (let i = 0; i < globalData.getNumberOfRows(); i++) {
         const time = new Date(globalData.getValue(i, 0));
         if (time.getTime() >= rangeTime) {
-          filteredData.addRow([
-            time,
-            globalData.getValue(i, 1),
-            globalData.getValue(i, 2)
-          ]);
+          const temp = globalData.getValue(i, 1);
+          const hum = globalData.getValue(i, 2);
+          const tooltipTemp = `<div style='padding:5px'><b>🌡️ Temperature:</b> ${temp.toFixed(2)} °C<br><i>${time.toLocaleTimeString()}</i></div>`;
+          const tooltipHum = `<div style='padding:5px'><b>💧 Humidity:</b> ${hum.toFixed(2)} %<br><i>${time.toLocaleTimeString()}</i></div>`;
+          filteredData.addRow([time, temp, hum, tooltipTemp, tooltipHum]);
         }
       }
 
       return filteredData;
+    }
+
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+      const chartArea = document.createElement('div');
+      chartArea.style.width = '900px';
+      chartArea.style.padding = '10px';
+      const clone1 = document.getElementById('chart_hum').cloneNode(true);
+      const clone2 = document.getElementById('chart_temp').cloneNode(true);
+      chartArea.appendChild(clone1);
+      chartArea.appendChild(clone2);
+      document.body.appendChild(chartArea);
+      html2canvas(chartArea).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', 5, 5, 200, 150);
+        pdf.save('dashboard.pdf');
+        document.body.removeChild(chartArea);
+      });
     }
 
     function exportCSV() {
@@ -77,19 +98,6 @@
       }
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       saveAs(blob, 'temperature_humidity_data.csv');
-    }
-
-    async function exportPDF() {
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF();
-      const charts = document.querySelectorAll('.chart-container');
-      for (let i = 0; i < charts.length; i++) {
-        const canvas = await html2canvas(charts[i]);
-        const imgData = canvas.toDataURL('image/png');
-        if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 10, 10, 190, 100);
-      }
-      pdf.save('dashboard.pdf');
     }
 
     function drawChart(range = 1, scroll = false) {
@@ -109,34 +117,24 @@
         document.getElementById("latestTemp").textContent = `${temp.toFixed(2)} °C`;
         document.getElementById("latestHum").textContent = `${hum.toFixed(2)} %`;
 
-        let scrollData = new google.visualization.DataTable();
-        scrollData.addColumn('datetime', 'Time');
-        scrollData.addColumn('number', 'Temperature');
-        scrollData.addColumn('number', 'Humidity');
-
-        const totalRows = filtered.getNumberOfRows();
-        if (scroll) scrollIndex++;
-        if (scrollIndex > totalRows - windowSize) scrollIndex = 0;
-
-        for (let i = scrollIndex; i < scrollIndex + windowSize && i < totalRows; i++) {
-          scrollData.addRow([
-            filtered.getValue(i, 0),
-            filtered.getValue(i, 1),
-            filtered.getValue(i, 2)
-          ]);
-        }
-
         const tempData = new google.visualization.DataTable();
         tempData.addColumn('datetime', 'Time');
         tempData.addColumn('number', 'Temperature');
+        tempData.addColumn({type: 'string', role: 'tooltip', p: {html: true}});
 
         const humData = new google.visualization.DataTable();
         humData.addColumn('datetime', 'Time');
         humData.addColumn('number', 'Humidity');
+        humData.addColumn({type: 'string', role: 'tooltip', p: {html: true}});
 
-        for (let i = 0; i < scrollData.getNumberOfRows(); i++) {
-          tempData.addRow([scrollData.getValue(i, 0), scrollData.getValue(i, 1)]);
-          humData.addRow([scrollData.getValue(i, 0), scrollData.getValue(i, 2)]);
+        for (let i = 0; i < filtered.getNumberOfRows(); i++) {
+          const time = filtered.getValue(i, 0);
+          const t = filtered.getValue(i, 1);
+          const h = filtered.getValue(i, 2);
+          const tt = filtered.getValue(i, 3);
+          const hh = filtered.getValue(i, 4);
+          tempData.addRow([time, t, tt]);
+          humData.addRow([time, h, hh]);
         }
 
         const commonOptions = {
@@ -145,12 +143,10 @@
           chartArea: { width: '85%', height: '65%' },
           hAxis: { title: 'เวลา', format: 'HH:mm', direction: -1 },
           animation: { startup: true, duration: 800, easing: 'inAndOut' },
+          tooltip: { isHtml: true },
           annotations: {
             alwaysOutside: true,
             textStyle: { fontSize: 12, color: '#000' }
-          },
-          tooltip: {
-            isHtml: true
           }
         };
 
@@ -171,54 +167,14 @@
       });
     }
   </script>
-  <style>
-    body.dark { background-color: #121212; color: #eee; }
-    body.light { background-color: #fff; color: #222; }
-    body.blue { background-color: #e3f2fd; color: #0d47a1; }
-    body.red { background-color: #ffebee; color: #b71c1c; }
-    body.green { background-color: #e8f5e9; color: #1b5e20; }
-    body.purple { background-color: #f3e5f5; color: #4a148c; }
-    body.yellow { background-color: #fffde7; color: #f57f17; }
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 30px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    h1 { font-size: 2rem; margin-bottom: 10px; }
-    .description { margin-bottom: 15px; }
-    #controls { margin-bottom: 15px; }
-    #controls select, #controls button {
-      background: #1e88e5;
-      border: none;
-      padding: 8px 16px;
-      color: #fff;
-      margin: 5px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    #latestValues {
-      display: flex;
-      gap: 40px;
-      margin: 20px 0;
-    }
-    .value { font-size: 1.5rem; font-weight: bold; }
-    .chart-container { width: 100%; max-width: 900px; }
-    #clock { font-size: 1.2rem; margin-top: 10px; }
-    @media (max-width: 600px) {
-      #latestValues { flex-direction: column; align-items: center; }
-    }
-  </style>
 </head>
 <body class="dark">
   <h1>📊 ESP8266 Temperature & Humidity Dashboard</h1>
   <p class="description">อัปเดตอัตโนมัติทุก 10 วินาที | 🕒 <span id="clock">--:--:--</span></p>
-  <div id="controls" role="region" aria-label="ตัวกรองและปุ่มควบคุม">
+  <div id="controls">
     <button onclick="drawChart(1)">📅 1 วัน</button>
     <button onclick="drawChart(7)">📅 7 วัน</button>
-    <button onclick="drawChart(7)">📅 30 วัน</button>
+    <button onclick="drawChart(7)">📅 15 วัน</button>
     <button onclick="exportCSV()">📤 Export CSV</button>
     <button onclick="exportPDF()">📄 Export PDF</button>
     <select onchange="setTheme(this)">
@@ -232,11 +188,11 @@
     </select>
     <button onclick="toggleScroll()" id="toggleScrollBtn">⏸️ Pause</button>
   </div>
-  <div id="latestValues" role="region" aria-live="polite">
-    <div>อุณหภูมิ: <span id="latestTemp" class="value">-- °C</span></div>
-    <div>ความชื้น: <span id="latestHum" class="value">-- %</span></div>
+  <div id="latestValues">
+    <div>อุณหภูมิ: <span id="latestTemp">-- °C</span></div>
+    <div>ความชื้น: <span id="latestHum">-- %</span></div>
   </div>
-  <div class="chart-container" id="chart_hum" role="img" aria-label="กราฟความชื้นย้อนหลัง"></div>
-  <div class="chart-container" id="chart_temp" role="img" aria-label="กราฟอุณหภูมิย้อนหลัง"></div>
+  <div class="chart-container" id="chart_hum"></div>
+  <div class="chart-container" id="chart_temp"></div>
 </body>
 </html>
